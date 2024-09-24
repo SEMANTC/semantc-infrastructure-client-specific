@@ -11,6 +11,7 @@ variable "region" {
 variable "data_location" {
   description = "Location for BigQuery datasets"
   type        = string
+  default     = "US"
 }
 
 variable "clients" {

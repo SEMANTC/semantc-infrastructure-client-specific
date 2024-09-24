@@ -1,4 +1,5 @@
 output "client_service_accounts" {
+  description = "Mapping of client IDs to their service account emails"
   value = {
     for client_id, module_instance in module.client_resources :
     client_id => module_instance.service_account_email
@@ -6,6 +7,7 @@ output "client_service_accounts" {
 }
 
 output "client_buckets" {
+  description = "Mapping of client IDs to their bucket names"
   value = {
     for client_id, module_instance in module.client_resources :
     client_id => module_instance.bucket_name
@@ -13,6 +15,7 @@ output "client_buckets" {
 }
 
 output "client_raw_datasets" {
+  description = "Mapping of client IDs to their raw dataset IDs"
   value = {
     for client_id, module_instance in module.client_resources :
     client_id => module_instance.raw_dataset_id
@@ -20,6 +23,7 @@ output "client_raw_datasets" {
 }
 
 output "client_transformed_datasets" {
+  description = "Mapping of client IDs to their transformed dataset IDs"
   value = {
     for client_id, module_instance in module.client_resources :
     client_id => module_instance.transformed_dataset_id

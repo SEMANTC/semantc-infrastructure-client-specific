@@ -5,20 +5,25 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
 
   template {
     template {
-      containers {
-        image = var.image_ingestion
-        env = [
-          {
+      spec {
+        containers {
+          image = var.image_ingestion
+
+          env {
             name  = "CLIENT_ID"
             value = var.client_id
-          },
-          {
+          }
+
+          env {
             name  = "PROJECT_ID"
             value = var.project_id
           }
-        ]
+
+          # Add other environment variables as needed
+        }
+
+        service_account = var.service_account_email
       }
-      service_account = var.service_account_email
     }
   }
 }
@@ -30,20 +35,25 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
 
   template {
     template {
-      containers {
-        image = var.image_transformation
-        env = [
-          {
+      spec {
+        containers {
+          image = var.image_transformation
+
+          env {
             name  = "CLIENT_ID"
             value = var.client_id
-          },
-          {
+          }
+
+          env {
             name  = "PROJECT_ID"
             value = var.project_id
           }
-        ]
+
+          # Add other environment variables as needed
+        }
+
+        service_account = var.service_account_email
       }
-      service_account = var.service_account_email
     }
   }
 }

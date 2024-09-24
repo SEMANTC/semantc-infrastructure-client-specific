@@ -1,23 +1,29 @@
 variable "client_id" {
-  type = string
+  description = "Unique identifier for the client"
+  type        = string
 }
 
 variable "project_id" {
-  type = string
+  description = "GCP Project ID"
+  type        = string
 }
 
 variable "region" {
-  type = string
+  description = "GCP Region"
+  type        = string
 }
 
 variable "service_account_email" {
-  type = string
+  description = "Email of the client's service account"
+  type        = string
 }
 
 variable "image_ingestion" {
-  type = string
+  description = "Container image for the data ingestion job"
+  type        = string
 }
 
 variable "image_transformation" {
-  type = string
+  description = "Container image for the data transformation job"
+  type        = string
 }
