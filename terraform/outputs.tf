@@ -1,3 +1,8 @@
+output "master_service_account_email" {
+  description = "Email of the master service account"
+  value       = google_service_account.master_sa.email
+}
+
 output "client_service_accounts" {
   description = "Mapping of client IDs to their service account emails"
   value = {

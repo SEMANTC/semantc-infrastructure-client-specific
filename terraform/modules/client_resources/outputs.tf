@@ -7,9 +7,9 @@ output "bucket_name" {
 }
 
 output "raw_dataset_id" {
-  value = google_bigquery_dataset.raw_dataset.id
+  value = google_bigquery_dataset.raw_dataset.dataset_id
 }
 
 output "transformed_dataset_id" {
-  value = google_bigquery_dataset.transformed_dataset.id
+  value = google_bigquery_dataset.transformed_dataset.dataset_id
 }

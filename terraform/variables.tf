@@ -18,3 +18,8 @@ variable "clients" {
   description = "List of client IDs"
   type        = list(string)
 }
+
+variable "terraform_sa_key_path" {
+  description = "Path to the Terraform service account JSON key file"
+  type        = string
+}

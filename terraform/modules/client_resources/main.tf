@@ -23,11 +23,6 @@ resource "google_bigquery_dataset" "raw_dataset" {
   labels = {
     client_id = var.client_id
   }
-
-  access {
-    role          = "OWNER"
-    user_by_email = google_service_account.client_sa.email
-  }
 }
 
 resource "google_bigquery_dataset" "transformed_dataset" {
@@ -38,21 +33,27 @@ resource "google_bigquery_dataset" "transformed_dataset" {
   labels = {
     client_id = var.client_id
   }
-
-  access {
-    role          = "OWNER"
-    user_by_email = google_service_account.client_sa.email
-  }
 }
 
-resource "google_storage_bucket_iam_member" "client_bucket_binding" {
+# Assign Read-Only Access to Client Service Account for Raw Dataset
+resource "google_bigquery_dataset_iam_member" "raw_read_access" {
+  dataset_id = google_bigquery_dataset.raw_dataset.dataset_id
+  project    = var.project_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.client_sa.email}"
+}
+
+# Assign Read-Only Access to Client Service Account for Transformed Dataset
+resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
+  dataset_id = google_bigquery_dataset.transformed_dataset.dataset_id
+  project    = var.project_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.client_sa.email}"
+}
+
+# Assign Read-Only Access to Client Service Account for Storage Bucket
+resource "google_storage_bucket_iam_member" "client_bucket_viewer" {
   bucket = google_storage_bucket.client_bucket.name
-  role   = "roles/storage.admin"
+  role   = "roles/storage.objectViewer"
   member = "serviceAccount:${google_service_account.client_sa.email}"
-}
-
-resource "google_project_iam_member" "client_bigquery_job_user" {
-  project = var.project_id
-  role    = "roles/bigquery.jobUser"
-  member  = "serviceAccount:${google_service_account.client_sa.email}"
 }

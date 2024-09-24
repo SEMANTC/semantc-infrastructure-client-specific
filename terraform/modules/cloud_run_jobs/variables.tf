@@ -14,7 +14,7 @@ variable "region" {
 }
 
 variable "service_account_email" {
-  description = "Email of the client's service account"
+  description = "Email of the master service account"
   type        = string
 }
 
