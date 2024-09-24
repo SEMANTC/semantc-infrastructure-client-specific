@@ -1,0 +1,80 @@
+# **Terraform .gitignore**
+
+# Local Terraform state files
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+
+# Crash log files
+crash.log
+
+# Exclude override files as they are usually used to override resources locally
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include CLI configuration files
+.terraformrc
+terraform.rc
+
+# Terraform directories
+.terraform/
+.terraform.lock.hcl
+
+# Ignore plan output files
+*.tfplan
+
+# Sensitive files (if any)
+# Uncomment and add paths if you have additional sensitive files
+# secrets.yaml
+# credentials.json
+
+# IDE and Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*.sublime-project
+*.sublime-workspace
+*.tmproj
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Compiled files
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Python cache (if any scripts are in Python)
+__pycache__/
+*.py[cod]
+
+# Node.js modules (if applicable)
+node_modules/
+
+# Environment variable files
+.env
+.env.*
+
+# Docker files (if using Docker)
+Dockerfile
+docker-compose.yml
+
+# Miscellaneous
+*.bak
+*.backup
+*.old
