@@ -84,8 +84,8 @@ resource "google_project_iam_member" "master_storage_admin" {
 
 # Modules for Client Resources
 module "client_resources" {
-  source  = "./modules/client_resources"
-  for_each = toset(var.clients)
+  source    = "./modules/client_resources"
+  for_each  = toset(var.clients)
 
   client_id     = each.value
   project_id    = var.project_id
