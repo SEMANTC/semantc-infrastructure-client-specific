@@ -24,13 +24,17 @@ jobs:
           project_id: semantc-dev
 
       - name: Initialize Terraform
+        working-directory: terraform
         run: terraform init
 
       - name: Validate Terraform
+        working-directory: terraform
         run: terraform validate
 
       - name: Plan Terraform
-        run: terraform plan -out=tfplan -var="new_client_id=${{ github.event.client_id }}" -var="new_client_token=${{ github.event.client_token }}"
+        working-directory: terraform
+        run: terraform plan -out=tfplan -var="new_client_id=${{ github.event.client_payload.client_id }}" -var="new_client_token=${{ github.event.client_payload.client_token }}"
 
       - name: Apply Terraform
+        working-directory: terraform
         run: terraform apply -auto-approve tfplan
