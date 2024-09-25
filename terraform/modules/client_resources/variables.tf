@@ -17,3 +17,8 @@ variable "data_location" {
   description = "Location for BigQuery datasets"
   type        = string
 }
+
+variable "client_token" {
+  description = "Token for the client (e.g., Xero API token)"
+  type        = string
+}
