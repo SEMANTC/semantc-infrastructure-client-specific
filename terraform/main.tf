@@ -105,5 +105,6 @@ module "cloud_run_jobs" {
   region                = var.region
   service_account_email = google_service_account.master_sa.email
   image_ingestion       = "gcr.io/semantc-dev/xero-ingestion:latest"
-  image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+  # image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+  image_transformation  = "gcr.io/semantc-dev/xero-ingestion:latest"
 }

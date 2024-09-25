@@ -18,7 +18,6 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           value = var.project_id
         }
 
-        # Add this block inside the containers block
         env {
           name = "CLIENT_TOKEN"
           value_source {
@@ -28,12 +27,16 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
             }
           }
         }
-
-        # Add other environment variables as needed
       }
 
       service_account = var.service_account_email
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
+    ]
   }
 }
 
@@ -57,7 +60,6 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           value = var.project_id
         }
 
-        # Add this block inside the containers block
         env {
           name = "CLIENT_TOKEN"
           value_source {
@@ -67,11 +69,15 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
             }
           }
         }
-
-        # Add other environment variables as needed
       }
 
       service_account = var.service_account_email
     }
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].template[0].containers[0].image,
+    ]
   }
 }

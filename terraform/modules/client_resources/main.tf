@@ -13,6 +13,11 @@ resource "google_storage_bucket" "client_bucket" {
   labels = {
     client_id = var.client_id
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [labels]
+  }
 }
 
 resource "google_bigquery_dataset" "raw_dataset" {
@@ -23,6 +28,11 @@ resource "google_bigquery_dataset" "raw_dataset" {
   labels = {
     client_id = var.client_id
   }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [labels]
+  }
 }
 
 resource "google_bigquery_dataset" "transformed_dataset" {
@@ -32,6 +42,11 @@ resource "google_bigquery_dataset" "transformed_dataset" {
 
   labels = {
     client_id = var.client_id
+  }
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = [labels]
   }
 }
 
@@ -56,12 +71,15 @@ resource "google_secret_manager_secret" "client_token_secret" {
   secret_id = "client-${var.client_id}-token"
 
   replication {
-    // Change this to the correct replication type
     user_managed {
       replicas {
-        location = var.region // Specify the location if needed
+        location = var.region
       }
     }
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
