@@ -9,17 +9,27 @@ variable "region" {
 }
 
 variable "data_location" {
-  description = "Location for BigQuery datasets"
+  description = "BigQuery Location"
   type        = string
-  default     = "US"
 }
 
 variable "clients" {
-  description = "List of client IDs"
+  description = "list of Client IDs"
   type        = list(string)
 }
 
+
+variable "client_tokens" {
+  description = "map of Client IDs to their respective tokens"
+  type        = map(string)
+}
+
+variable "master_sa_email" {
+  description = "email of the master service account"
+  type        = string
+}
+
 variable "terraform_sa_key_path" {
-  description = "Path to the Terraform service account JSON key file"
+  description = "path to the Terraform service account JSON key file"
   type        = string
 }

@@ -18,15 +18,17 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           value = var.project_id
         }
 
+        # Add this block inside the containers block
         env {
-            name = "CLIENT_TOKEN"
-            value_from {
-              secret_key_ref {
-                name = "client-${var.client_id}-token"
-                key  = "latest"  # Adjust if using specific versions
-              }
+          name = "CLIENT_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = "client-${var.client_id}-token"
+              version = "latest"
             }
           }
+        }
+
         # Add other environment variables as needed
       }
 
@@ -55,15 +57,16 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           value = var.project_id
         }
 
+        # Add this block inside the containers block
         env {
-            name = "CLIENT_TOKEN"
-            value_from {
-              secret_key_ref {
-                name = "client-${var.client_id}-token"
-                key  = "latest"  # Adjust if using specific versions
-              }
+          name = "CLIENT_TOKEN"
+          value_source {
+            secret_key_ref {
+              secret  = "client-${var.client_id}-token"
+              version = "latest"
             }
           }
+        }
 
         # Add other environment variables as needed
       }

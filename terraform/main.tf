@@ -91,6 +91,8 @@ module "client_resources" {
   project_id    = var.project_id
   region        = var.region
   data_location = var.data_location
+  client_token  = var.client_tokens[each.value]
+  master_sa_email = google_service_account.master_sa.email
 }
 
 # Modules for Cloud Run Jobs using Master Service Account

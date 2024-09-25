@@ -22,3 +22,8 @@ variable "client_token" {
   description = "Token for the client (e.g., Xero API token)"
   type        = string
 }
+
+variable "master_sa_email" {
+  description = "email of the master service account"
+  type        = string
+}

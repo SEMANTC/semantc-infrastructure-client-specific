@@ -1,5 +1,5 @@
 output "master_service_account_email" {
-  description = "Email of the master service account"
+  description = "email of the master service account"
   value       = google_service_account.master_sa.email
 }
 

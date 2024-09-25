@@ -1,108 +1,78 @@
-terraform {
-  required_version = ">= 1.0"
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 4.0"
-    }
-  }
-
-  backend "gcs" {
-    bucket = "terraform-state-semantic-dev"  # Replace with your GCS bucket name
-    prefix = "terraform/state"
-  }
-}
-
-provider "google" {
-  project     = var.project_id
-  region      = var.region
-  credentials = file(var.terraform_sa_key_path)
-}
-
-# Enable Required APIs
-resource "google_project_service" "cloud_run" {
-  service = "run.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "bigquery" {
-  service = "bigquery.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "storage" {
-  service = "storage.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "secret_manager" {
-  service = "secretmanager.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "cloud_build" {
-  service = "cloudbuild.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "cloud_logging" {
-  service = "logging.googleapis.com"
-  project = var.project_id
-}
-
-resource "google_project_service" "cloud_monitoring" {
-  service = "monitoring.googleapis.com"
-  project = var.project_id
-}
-
-# Create Master Service Account
-resource "google_service_account" "master_sa" {
-  account_id   = "master-sa"
-  display_name = "Master Service Account for Pipelines"
+resource "google_service_account" "client_sa" {
+  account_id   = "client-${var.client_id}-sa"
+  display_name = "Service account for client ${var.client_id}"
   project      = var.project_id
 }
 
-# Assign Roles to Master Service Account
-resource "google_project_iam_member" "master_run_admin" {
-  project = var.project_id
-  role    = "roles/run.admin"
-  member  = "serviceAccount:${google_service_account.master_sa.email}"
+resource "google_storage_bucket" "client_bucket" {
+  name          = "client-${var.client_id}-bucket"
+  location      = var.region
+  project       = var.project_id
+  force_destroy = true
+
+  labels = {
+    client_id = var.client_id
+  }
 }
 
-resource "google_project_iam_member" "master_bigquery_admin" {
-  project = var.project_id
-  role    = "roles/bigquery.admin"
-  member  = "serviceAccount:${google_service_account.master_sa.email}"
+resource "google_bigquery_dataset" "raw_dataset" {
+  dataset_id = "raw_${var.client_id}"
+  project    = var.project_id
+  location   = var.data_location
+
+  labels = {
+    client_id = var.client_id
+  }
 }
 
-resource "google_project_iam_member" "master_storage_admin" {
-  project = var.project_id
-  role    = "roles/storage.admin"
-  member  = "serviceAccount:${google_service_account.master_sa.email}"
+resource "google_bigquery_dataset" "transformed_dataset" {
+  dataset_id = "transformed_${var.client_id}"
+  project    = var.project_id
+  location   = var.data_location
+
+  labels = {
+    client_id = var.client_id
+  }
 }
 
-# Modules for Client Resources
-module "client_resources" {
-  source    = "./modules/client_resources"
-  for_each  = { for client in local.clients : client.id => client }
-
-  client_id     = each.value.id
-  client_token  = each.value.token
-  project_id    = var.project_id
-  region        = var.region
-  data_location = var.data_location
+# assign read-only access to client Service Account for RAW dataset
+resource "google_bigquery_dataset_iam_member" "raw_read_access" {
+  dataset_id = google_bigquery_dataset.raw_dataset.dataset_id
+  project    = var.project_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.client_sa.email}"
 }
 
-# Modules for Cloud Run Jobs using Master Service Account
-module "cloud_run_jobs" {
-  source               = "./modules/cloud_run_jobs"
-  for_each             = { for client in local.clients : client.id => client }
+# Assign Read-Only Access to Client Service Account for TRANSFORMED Dataset
+resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
+  dataset_id = google_bigquery_dataset.transformed_dataset.dataset_id
+  project    = var.project_id
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.client_sa.email}"
+}
 
-  client_id             = each.value.id
-  project_id            = var.project_id
-  region                = var.region
-  service_account_email = google_service_account.master_sa.email
-  image_ingestion       = "gcr.io/${var.project_id}/ingestion_image:latest"       # Replace with your ingestion image path
-  image_transformation  = "gcr.io/${var.project_id}/transformation_image:latest"  # Replace with your transformation image path
+# Create Secret in Secret Manager for Client Token
+resource "google_secret_manager_secret" "client_token_secret" {
+  secret_id = "client-${var.client_id}-token"
+
+  replication {
+    // Change this to the correct replication type
+    user_managed {
+      replicas {
+        location = var.region // Specify the location if needed
+      }
+    }
+  }
+}
+
+resource "google_secret_manager_secret_version" "client_token_version" {
+  secret      = google_secret_manager_secret.client_token_secret.name
+  secret_data = var.client_token
+}
+
+# Grant Access to Master Service Account to Access Secrets
+resource "google_secret_manager_secret_iam_member" "master_secret_access" {
+  secret_id = google_secret_manager_secret.client_token_secret.id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.master_sa_email}"
 }
