@@ -1,5 +1,5 @@
 variable "client_id" {
-  description = "Unique identifier for the client"
+  description = "unique identifier for the client"
   type        = string
 }
 
@@ -14,16 +14,16 @@ variable "region" {
 }
 
 variable "service_account_email" {
-  description = "email of the master service account"
+  description = "email of the master Service Account"
   type        = string
 }
 
 variable "image_ingestion" {
-  description = "Container image for the data ingestion job"
+  description = "container image for the data ingestion job"
   type        = string
 }
 
 variable "image_transformation" {
-  description = "Container image for the data transformation job"
+  description = "container image for the data transformation job"
   type        = string
 }

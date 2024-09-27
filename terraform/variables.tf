@@ -18,14 +18,13 @@ variable "clients" {
   type        = list(string)
 }
 
-
 variable "client_tokens" {
   description = "map of Client IDs to their respective tokens"
   type        = map(string)
 }
 
 variable "master_sa_email" {
-  description = "email of the master service account"
+  description = "email of the Master Service Account"
   type        = string
 }
 

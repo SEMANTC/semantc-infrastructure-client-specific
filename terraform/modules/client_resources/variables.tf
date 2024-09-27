@@ -1,5 +1,5 @@
 variable "client_id" {
-  description = "Unique identifier for the client"
+  description = "unique identifier for the client"
   type        = string
 }
 
@@ -14,7 +14,7 @@ variable "region" {
 }
 
 variable "data_location" {
-  description = "Location for BigQuery datasets"
+  description = "location for BigQuery datasets"
   type        = string
 }
 
@@ -24,6 +24,6 @@ variable "client_token" {
 }
 
 variable "master_sa_email" {
-  description = "email of the master service account"
+  description = "email of the master Service Account"
   type        = string
 }

@@ -50,15 +50,7 @@ resource "google_bigquery_dataset" "transformed_dataset" {
   }
 }
 
-# assign read-only access to client Service Account for RAW dataset
-resource "google_bigquery_dataset_iam_member" "raw_read_access" {
-  dataset_id = google_bigquery_dataset.raw_dataset.dataset_id
-  project    = var.project_id
-  role       = "roles/bigquery.dataViewer"
-  member     = "serviceAccount:${google_service_account.client_sa.email}"
-}
-
-# Assign Read-Only Access to Client Service Account for TRANSFORMED Dataset
+# assign read-only access to client Service Account for TRANSFORMED dataset
 resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   dataset_id = google_bigquery_dataset.transformed_dataset.dataset_id
   project    = var.project_id
@@ -66,7 +58,7 @@ resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   member     = "serviceAccount:${google_service_account.client_sa.email}"
 }
 
-# Create Secret in Secret Manager for Client Token
+# create Secret in Secret Manager for client token
 resource "google_secret_manager_secret" "client_token_secret" {
   secret_id = "client-${var.client_id}-token"
 
@@ -88,7 +80,7 @@ resource "google_secret_manager_secret_version" "client_token_version" {
   secret_data = var.client_token
 }
 
-# Grant Access to Master Service Account to Access Secrets
+# grant access to master Service Account to access Secrets
 resource "google_secret_manager_secret_iam_member" "master_secret_access" {
   secret_id = google_secret_manager_secret.client_token_secret.id
   role      = "roles/secretmanager.secretAccessor"
