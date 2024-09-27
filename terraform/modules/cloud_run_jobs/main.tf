@@ -1,3 +1,5 @@
+# terraform/modules/cloud_run_jobs/main.tf
+
 resource "google_cloud_run_v2_job" "data_ingestion_job" {
   name     = "data-ingestion-${var.new_client_id}"
   location = var.region
@@ -14,7 +16,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
         }
 
         env {
-          name  = "PROJECT_ID"
+          name = "PROJECT_ID"
           value = var.project_id
         }
 
@@ -22,7 +24,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"
+              secret  = "client_${replace(var.new_client_id, "-", "_")}_token"
               version = "latest"
             }
           }
@@ -56,7 +58,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
         }
 
         env {
-          name  = "PROJECT_ID"
+          name = "PROJECT_ID"
           value = var.project_id
         }
 
@@ -64,7 +66,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"
+              secret  = "client_${replace(var.new_client_id, "-", "_")}_token"
               version = "latest"
             }
           }

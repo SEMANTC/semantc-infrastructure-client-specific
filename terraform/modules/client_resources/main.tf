@@ -1,5 +1,7 @@
+# terraform/modules/client_resources/main.tf
+
 resource "google_service_account" "client_sa" {
-  account_id   = "client-${replace(var.new_client_id, "_", "-")}-sa"  # Replaces underscores with hyphens
+  account_id   = "client-${substr(var.new_client_id, 0, 20)}-sa"  # Truncate to ensure <=30 characters
   display_name = "Service account for client ${var.new_client_id}"
   project      = var.project_id
 }
@@ -21,7 +23,7 @@ resource "google_storage_bucket" "client_bucket" {
 }
 
 resource "google_bigquery_dataset" "raw_dataset" {
-  dataset_id = "raw_${var.new_client_id}"
+  dataset_id = "raw_${replace(var.new_client_id, "-", "_")}"  # Replace hyphens with underscores
   project    = var.project_id
   location   = var.data_location
 
@@ -36,7 +38,7 @@ resource "google_bigquery_dataset" "raw_dataset" {
 }
 
 resource "google_bigquery_dataset" "transformed_dataset" {
-  dataset_id = "transformed_${var.new_client_id}"
+  dataset_id = "transformed_${replace(var.new_client_id, "-", "_")}"  # Replace hyphens with underscores
   project    = var.project_id
   location   = var.data_location
 
@@ -60,7 +62,7 @@ resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
 
 # Create Secret in Secret Manager for Client Token
 resource "google_secret_manager_secret" "client_token_secret" {
-  secret_id = "client-${var.new_client_id}-token"
+  secret_id = "client_${replace(var.new_client_id, "-", "_")}_token"  # Replace hyphens with underscores
 
   replication {
     user_managed {

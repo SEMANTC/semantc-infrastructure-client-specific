@@ -1,19 +1,21 @@
-output "service_account_email" {
-  value = google_service_account.client_sa.email
+# terraform/modules/client_resources/outputs.tf
+
+output "client_sa_email" {
+  description = "Service account email for the client"
+  value       = google_service_account.client_sa.email
 }
 
-output "bucket_name" {
-  value = google_storage_bucket.client_bucket.name
+output "client_bucket_name" {
+  description = "Storage bucket name for the client"
+  value       = google_storage_bucket.client_bucket.name
 }
 
 output "raw_dataset_id" {
-  value = google_bigquery_dataset.raw_dataset.dataset_id
+  description = "Raw BigQuery dataset ID for the client"
+  value       = google_bigquery_dataset.raw_dataset.dataset_id
 }
 
 output "transformed_dataset_id" {
-  value = google_bigquery_dataset.transformed_dataset.dataset_id
-}
-
-output "secret_name" {
-  value = google_secret_manager_secret.client_token_secret.name
+  description = "Transformed BigQuery dataset ID for the client"
+  value       = google_bigquery_dataset.transformed_dataset.dataset_id
 }

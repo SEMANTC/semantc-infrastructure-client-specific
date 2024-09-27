@@ -12,7 +12,7 @@ terraform {
 
   backend "gcs" {
     bucket = "terraform-state-semantic-dev"
-    prefix = "terraform/client_state/unique-client-identifier"  # Replace with your unique client ID
+    prefix = "terraform/client_state/unique-client-identifier"  # Replace with your actual new_client_id
   }
 }
 
@@ -42,4 +42,8 @@ module "cloud_run_jobs" {
   master_sa_email       = var.master_sa_email
   image_ingestion       = "gcr.io/semantc-dev/xero-ingestion:latest"
   image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+
+  depends_on = [
+    module.client_resources.google_secret_manager_secret_iam_member.master_secret_access
+  ]
 }

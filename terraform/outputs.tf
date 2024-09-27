@@ -1,31 +1,31 @@
-output "client_service_accounts" {
-  description = "mapping of client IDs to their service account emails"
-  value = {
-    for client_id, module_instance in module.client_resources :
-    client_id => module_instance.service_account_email
-  }
+# terraform/outputs.tf
+
+output "client_service_account_email" {
+  description = "Service account email for the client"
+  value       = module.client_resources.client_sa_email
 }
 
-output "client_buckets" {
-  description = "mapping of client IDs to their bucket names"
-  value = {
-    for client_id, module_instance in module.client_resources :
-    client_id => module_instance.bucket_name
-  }
+output "client_bucket_name" {
+  description = "Storage bucket name for the client"
+  value       = module.client_resources.client_bucket_name
 }
 
-output "client_raw_datasets" {
-  description = "mapping of client IDs to their raw dataset IDs"
-  value = {
-    for client_id, module_instance in module.client_resources :
-    client_id => module_instance.raw_dataset_id
-  }
+output "client_raw_dataset_id" {
+  description = "Raw BigQuery dataset ID for the client"
+  value       = module.client_resources.raw_dataset_id
 }
 
-output "client_transformed_datasets" {
-  description = "mapping of client IDs to their transformed dataset IDs"
-  value = {
-    for client_id, module_instance in module.client_resources :
-    client_id => module_instance.transformed_dataset_id
-  }
+output "client_transformed_dataset_id" {
+  description = "Transformed BigQuery dataset ID for the client"
+  value       = module.client_resources.transformed_dataset_id
+}
+
+output "cloud_run_ingestion_job_name" {
+  description = "Data ingestion Cloud Run job name"
+  value       = module.cloud_run_jobs.data_ingestion_job_name
+}
+
+output "cloud_run_transformation_job_name" {
+  description = "Data transformation Cloud Run job name"
+  value       = module.cloud_run_jobs.data_transformation_job_name
 }
