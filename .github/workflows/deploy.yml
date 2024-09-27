@@ -9,41 +9,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1. checkout the repository code
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # 2. cache Terraform plugins and modules to speed up subsequent runs
+      - name: Cache Terraform Plugins and Modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.terraform.d/plugin-cache
+            .terraform
+          key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf') }}
+          restore-keys: |
+            ${{ runner.os }}-terraform-
+
+      # 3. configure Terraform to use the plugin cache
+      - name: Configure Terraform Plugin Cache
+        run: |
+          mkdir -p ~/.terraform.d
+          echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
+
+      # 4. set up Terraform CLI
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.3.0
+          terraform_version: 1.3.0  # Update to the required version
 
+      # 5. authenticate to Google Cloud using the service account
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      # 6. set up gcloud CLI with necessary components
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: semantc-dev
           install_components: 'gke-gcloud-auth-plugin'
 
+      # 7. Initialize Terraform with backend configuration
       - name: Initialize Terraform
         working-directory: terraform
-        run: terraform init
+        run: |
+          terraform init -input=false
 
+      # 8. Validate Terraform configuration
       - name: Validate Terraform
         working-directory: terraform
         run: terraform validate
 
+      # 9. Plan Terraform changes with increased parallelism
       - name: Plan Terraform
         working-directory: terraform
         run: |
           terraform plan -out=tfplan \
             -var="new_client_id=${{ github.event.client_payload.client_id }}" \
             -var="new_client_token=${{ github.event.client_payload.client_token }}" \
-            -var="master_sa_email=${{ secrets.MASTER_SA_EMAIL }}"
+            -var="master_sa_email=${{ secrets.MASTER_SA_EMAIL }}" \
+            -parallelism=20
 
+      # 10. Apply Terraform changes with increased parallelism
       - name: Apply Terraform
         working-directory: terraform
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve tfplan -parallelism=20
