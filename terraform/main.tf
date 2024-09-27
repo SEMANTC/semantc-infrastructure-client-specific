@@ -41,9 +41,10 @@ module "cloud_run_jobs" {
   region                = var.region
   master_sa_email       = var.master_sa_email
   image_ingestion       = "gcr.io/semantc-dev/xero-ingestion:latest"
-  image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+  image_transformation  = "gcr.io/semantc-dev/xero-ingestion:latest"
+  # image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
 
   depends_on = [
-    module.client_resources.google_secret_manager_secret_iam_member.master_secret_access
+    module.client_resources  # Reference the entire module to establish dependency
   ]
 }
