@@ -1,5 +1,5 @@
 resource "google_cloud_run_v2_job" "data_ingestion_job" {
-  name     = "data-ingestion-${var.client_id}"
+  name     = "data-ingestion-${var.new_client_id}"
   location = var.region
   project  = var.project_id
 
@@ -10,7 +10,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
 
         env {
           name  = "CLIENT_ID"
-          value = var.client_id
+          value = var.new_client_id
         }
 
         env {
@@ -22,14 +22,14 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.client_id}-token"
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
         }
       }
 
-      service_account = var.service_account_email
+      service_account = var.master_sa_email
     }
   }
 
@@ -41,7 +41,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
 }
 
 resource "google_cloud_run_v2_job" "data_transformation_job" {
-  name     = "data-transformation-${var.client_id}"
+  name     = "data-transformation-${var.new_client_id}"
   location = var.region
   project  = var.project_id
 
@@ -52,7 +52,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
 
         env {
           name  = "CLIENT_ID"
-          value = var.client_id
+          value = var.new_client_id
         }
 
         env {
@@ -64,14 +64,14 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.client_id}-token"
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
         }
       }
 
-      service_account = var.service_account_email
+      service_account = var.master_sa_email
     }
   }
 

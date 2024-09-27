@@ -1,17 +1,17 @@
 resource "google_service_account" "client_sa" {
-  account_id   = "client-${var.client_id}-sa"
-  display_name = "Service account for client ${var.client_id}"
+  account_id   = "client-${replace(var.new_client_id, "_", "-")}-sa"  # Replaces underscores with hyphens
+  display_name = "Service account for client ${var.new_client_id}"
   project      = var.project_id
 }
 
 resource "google_storage_bucket" "client_bucket" {
-  name          = "client-${var.client_id}-bucket"
+  name          = "client-${var.new_client_id}-bucket"
   location      = var.region
   project       = var.project_id
   force_destroy = true
 
   labels = {
-    client_id = var.client_id
+    client_id = var.new_client_id
   }
 
   lifecycle {
@@ -21,12 +21,12 @@ resource "google_storage_bucket" "client_bucket" {
 }
 
 resource "google_bigquery_dataset" "raw_dataset" {
-  dataset_id = "raw_${var.client_id}"
+  dataset_id = "raw_${var.new_client_id}"
   project    = var.project_id
   location   = var.data_location
 
   labels = {
-    client_id = var.client_id
+    client_id = var.new_client_id
   }
 
   lifecycle {
@@ -36,12 +36,12 @@ resource "google_bigquery_dataset" "raw_dataset" {
 }
 
 resource "google_bigquery_dataset" "transformed_dataset" {
-  dataset_id = "transformed_${var.client_id}"
+  dataset_id = "transformed_${var.new_client_id}"
   project    = var.project_id
   location   = var.data_location
 
   labels = {
-    client_id = var.client_id
+    client_id = var.new_client_id
   }
 
   lifecycle {
@@ -50,7 +50,7 @@ resource "google_bigquery_dataset" "transformed_dataset" {
   }
 }
 
-# assign read-only access to client Service Account for TRANSFORMED dataset
+# Assign read-only access to client Service Account for TRANSFORMED dataset
 resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   dataset_id = google_bigquery_dataset.transformed_dataset.dataset_id
   project    = var.project_id
@@ -58,9 +58,9 @@ resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   member     = "serviceAccount:${google_service_account.client_sa.email}"
 }
 
-# create Secret in Secret Manager for client token
+# Create Secret in Secret Manager for Client Token
 resource "google_secret_manager_secret" "client_token_secret" {
-  secret_id = "client-${var.client_id}-token"
+  secret_id = "client-${var.new_client_id}-token"
 
   replication {
     user_managed {
@@ -77,10 +77,10 @@ resource "google_secret_manager_secret" "client_token_secret" {
 
 resource "google_secret_manager_secret_version" "client_token_version" {
   secret      = google_secret_manager_secret.client_token_secret.name
-  secret_data = var.client_token
+  secret_data = var.new_client_token
 }
 
-# grant access to master Service Account to access Secrets
+# Grant Access to Master Service Account to Access Secrets
 resource "google_secret_manager_secret_iam_member" "master_secret_access" {
   secret_id = google_secret_manager_secret.client_token_secret.id
   role      = "roles/secretmanager.secretAccessor"

@@ -1,29 +1,29 @@
-variable "client_id" {
-  description = "unique identifier for the client"
-  type        = string
-}
-
 variable "project_id" {
-  description = "GCP Project ID"
+  description = "GCP project ID"
   type        = string
 }
 
 variable "region" {
-  description = "GCP Region"
+  description = "GCP region"
   type        = string
 }
 
-variable "service_account_email" {
-  description = "email of the master Service Account"
+variable "new_client_id" {
+  description = "Unique identifier for the new client"
+  type        = string
+}
+
+variable "master_sa_email" {
+  description = "Email of the master service account"
   type        = string
 }
 
 variable "image_ingestion" {
-  description = "container image for the data ingestion job"
+  description = "Container image for the data ingestion job"
   type        = string
 }
 
 variable "image_transformation" {
-  description = "container image for the data transformation job"
+  description = "Container image for the data transformation job"
   type        = string
 }

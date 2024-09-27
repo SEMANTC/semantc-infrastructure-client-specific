@@ -1,34 +1,34 @@
 variable "project_id" {
-  description = "GCP Project ID"
+  description = "GCP project ID"
   type        = string
 }
 
 variable "region" {
-  description = "GCP Region"
-  type        = string
-}
-
-variable "data_location" {
-  description = "BigQuery Location"
-  type        = string
-}
-
-variable "clients" {
-  description = "list of Client IDs"
-  type        = list(string)
-}
-
-variable "client_tokens" {
-  description = "map of Client IDs to their respective tokens"
-  type        = map(string)
-}
-
-variable "master_sa_email" {
-  description = "email of the Master Service Account"
+  description = "GCP region"
   type        = string
 }
 
 variable "terraform_sa_key_path" {
-  description = "path to the Terraform service account JSON key file"
+  description = "Path to the Terraform service account key JSON file"
+  type        = string
+}
+
+variable "new_client_id" {
+  description = "Unique identifier for the new client"
+  type        = string
+}
+
+variable "new_client_token" {
+  description = "Token for the new client"
+  type        = string
+}
+
+variable "master_sa_email" {
+  description = "Email of the master service account"
+  type        = string
+}
+
+variable "data_location" {
+  description = "Location for data storage services"
   type        = string
 }

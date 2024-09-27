@@ -1,29 +1,29 @@
-variable "client_id" {
-  description = "unique identifier for the client"
-  type        = string
-}
-
 variable "project_id" {
-  description = "GCP Project ID"
+  description = "GCP project ID"
   type        = string
 }
 
 variable "region" {
-  description = "GCP Region"
+  description = "GCP region"
   type        = string
 }
 
-variable "data_location" {
-  description = "location for BigQuery datasets"
+variable "new_client_id" {
+  description = "Unique identifier for the new client"
   type        = string
 }
 
-variable "client_token" {
-  description = "Token for the client (e.g., Xero API token)"
+variable "new_client_token" {
+  description = "Token for the new client"
   type        = string
 }
 
 variable "master_sa_email" {
-  description = "email of the master Service Account"
+  description = "Email of the master service account"
+  type        = string
+}
+
+variable "data_location" {
+  description = "Location for data storage services"
   type        = string
 }
