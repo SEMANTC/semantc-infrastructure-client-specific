@@ -1,4 +1,4 @@
-name: Deploy Infrastructure
+name: Deploy Client Infrastructure
 
 on:
   repository_dispatch:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Plan Terraform
         working-directory: terraform
-        run: terraform plan -out=tfplan -var="new_client_id=${{ github.event.client_payload.client_id }}" -var="new_client_token=${{ github.event.client_payload.client_token }}"
+        run: terraform plan -out=tfplan -var="new_client_id=${{ github.event.client_payload.client_id }}" -var="new_client_token=${{ github.event.client_payload.client_token }}" -var="master_sa_email=${{ secrets.MASTER_SA_EMAIL }}"
 
       - name: Apply Terraform
         working-directory: terraform
