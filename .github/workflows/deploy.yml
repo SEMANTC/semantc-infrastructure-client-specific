@@ -46,6 +46,9 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          create_credentials_file: true  # Ensure the credentials file is created
+          export_environment_variables: true  # Export necessary environment variables
+          cleanup_credentials: false  # Keep the credentials file for subsequent steps
 
       # 6. Set up gcloud CLI with necessary components
       - name: Set up gcloud CLI
@@ -70,7 +73,7 @@ jobs:
         id: check_lock
         working-directory: terraform
         run: |
-          LOCK_EXISTS=$(gsutil ls gs://terraform-state-semantic-dev/terraform/client_state/default.tflock || echo "no")
+          LOCK_EXISTS=$(gsutil ls gs://terraform-state-semantic-dev/terraform/client_state/default.tflock 2>/dev/null || echo "no")
           if [ "$LOCK_EXISTS" != "no" ]; then
             echo "lock=true" >> $GITHUB_OUTPUT
           else
@@ -78,13 +81,13 @@ jobs:
           fi
 
       # 10. (Optional) Force Unlock if Needed
-      # Use with caution. Prefer manual unlocking to avoid state corruption.
+      # Use with extreme caution. Prefer manual unlocking to avoid state corruption.
       - name: Force Unlock Terraform State
         if: steps.check_lock.outputs.lock == 'true'
         working-directory: terraform
         run: terraform force-unlock 1727431347816800  # Replace with actual lock ID if necessary
         env:
-          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/semantc-infrastructure-client-specific/semantc-infrastructure-client-specific/gha-creds-035393f36ba6c09e.json
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ env.GOOGLE_GHA_CREDS_PATH }}
 
       # 11. Plan Terraform changes with increased parallelism
       - name: Plan Terraform
