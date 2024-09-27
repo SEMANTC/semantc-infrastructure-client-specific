@@ -8,12 +8,17 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    # Ensure only one deployment per client runs at a time
+    concurrency:
+      group: deploy-client-${{ github.event.client_payload.client_id }}
+      cancel-in-progress: false
+
     steps:
-      # 1. checkout the repository code
+      # 1. Checkout the repository code
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # 2. cache Terraform plugins and modules to speed up subsequent runs
+      # 2. Cache Terraform plugins and modules to speed up subsequent runs
       - name: Cache Terraform Plugins and Modules
         uses: actions/cache@v3
         with:
@@ -24,25 +29,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-terraform-
 
-      # 3. configure Terraform to use the plugin cache
+      # 3. Configure Terraform Plugin Cache
       - name: Configure Terraform Plugin Cache
         run: |
           mkdir -p ~/.terraform.d
           echo 'plugin_cache_dir = "$HOME/.terraform.d/plugin-cache"' > ~/.terraformrc
 
-      # 4. set up Terraform CLI
+      # 4. Set up Terraform CLI
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.3.0  # Update to the required version
 
-      # 5. authenticate to Google Cloud using the service account
+      # 5. Authenticate to Google Cloud using the service account
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
-      # 6. set up gcloud CLI with necessary components
+      # 6. Set up gcloud CLI with necessary components
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
         with:
@@ -60,7 +65,28 @@ jobs:
         working-directory: terraform
         run: terraform validate
 
-      # 9. Plan Terraform changes with increased parallelism
+      # 9. Check for existing state lock (Optional)
+      - name: Check for Existing Terraform Lock
+        id: check_lock
+        working-directory: terraform
+        run: |
+          LOCK_EXISTS=$(gsutil ls gs://terraform-state-semantic-dev/terraform/client_state/default.tflock || echo "no")
+          if [ "$LOCK_EXISTS" != "no" ]; then
+            echo "lock=true" >> $GITHUB_OUTPUT
+          else
+            echo "lock=false" >> $GITHUB_OUTPUT
+          fi
+
+      # 10. (Optional) Force Unlock if Needed
+      # Use with caution. Prefer manual unlocking to avoid state corruption.
+      - name: Force Unlock Terraform State
+        if: steps.check_lock.outputs.lock == 'true'
+        working-directory: terraform
+        run: terraform force-unlock 1727431347816800  # Replace with actual lock ID if necessary
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/work/semantc-infrastructure-client-specific/semantc-infrastructure-client-specific/gha-creds-035393f36ba6c09e.json
+
+      # 11. Plan Terraform changes with increased parallelism
       - name: Plan Terraform
         working-directory: terraform
         run: |
@@ -70,7 +96,7 @@ jobs:
             -var="master_sa_email=${{ secrets.MASTER_SA_EMAIL }}" \
             -parallelism=20
 
-      # 10. Apply Terraform changes with increased parallelism
+      # 12. Apply Terraform changes with increased parallelism
       - name: Apply Terraform
         working-directory: terraform
         run: terraform apply -auto-approve tfplan -parallelism=20
