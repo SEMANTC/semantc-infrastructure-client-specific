@@ -1,5 +1,3 @@
-# terraform/modules/cloud_run_jobs/main.tf
-
 resource "google_cloud_run_v2_job" "data_ingestion_job" {
   name     = "data-ingestion-${var.new_client_id}"
   location = var.region
