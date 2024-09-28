@@ -37,10 +37,16 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -out=tfplan \
+          TF_LOG=DEBUG terraform plan -out=tfplan \
             -var="new_client_id=${{ github.event.client_payload.client_id }}" \
-            -var="new_client_token=${{ github.event.client_payload.client_token }}"
+            -var="new_client_token=${{ github.event.client_payload.client_token }}" 2>&1 | tee terraform_plan.log
         working-directory: ./terraform
+
+      - name: Upload Terraform Plan Log
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan-log
+          path: ./terraform/terraform_plan.log
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
