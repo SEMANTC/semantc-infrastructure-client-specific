@@ -19,7 +19,7 @@ terraform {
 provider "google" {
   project     = var.project_id
   region      = var.region
-  credentials = file(var.terraform_sa_key_path)
+  credentials = var.terraform_sa_key_path != null ? file(var.terraform_sa_key_path) : null
 }
 
 # Module for Client Resources

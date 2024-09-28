@@ -1,6 +1,7 @@
 variable "terraform_sa_key_path" {
-  description = "path to the Terraform service account key JSON file"
+  description = "Path to the Terraform service account key JSON file"
   type        = string
+  default     = null
 }
 
 variable "project_id" {
