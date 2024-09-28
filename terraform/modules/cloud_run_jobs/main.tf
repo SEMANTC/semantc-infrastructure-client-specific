@@ -24,7 +24,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"  # Consistent naming with hyphens
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
@@ -35,7 +35,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
     }
   }
 
-  deletion_protection = false  # Ensure this is set to false
+  deletion_protection = false
 
   lifecycle {
     ignore_changes = [
@@ -68,7 +68,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"  # Consistent naming with hyphens
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
@@ -79,7 +79,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
     }
   }
 
-  deletion_protection = false  # Ensure this is set to false
+  deletion_protection = false
 
   lifecycle {
     ignore_changes = [

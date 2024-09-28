@@ -1,12 +1,10 @@
-# terraform/modules/client_resources/outputs.tf
-
 output "client_sa_email" {
-  description = "Service account email for the client"
+  description = "Service Account email for the client"
   value       = google_service_account.client_sa.email
 }
 
 output "client_bucket_name" {
-  description = "Storage bucket name for the client"
+  description = "Cloud Storage Bucket name for the client"
   value       = google_storage_bucket.client_bucket.name
 }
 

@@ -1,11 +1,10 @@
-# terraform/modules/client_resources/main.tf
-
 resource "google_service_account" "client_sa" {
   account_id   = "client-${substr(var.new_client_id, 0, 20)}-sa"  # truncate to ensure <=30 characters
   display_name = "Service account for client ${var.new_client_id}"
   project      = var.project_id
 }
 
+# create Cloud Storage Bucket
 resource "google_storage_bucket" "client_bucket" {
   name          = "client-${var.new_client_id}-bucket"
   location      = var.region
@@ -22,8 +21,9 @@ resource "google_storage_bucket" "client_bucket" {
   }
 }
 
+# create RAW dataset
 resource "google_bigquery_dataset" "raw_dataset" {
-  dataset_id = "raw_${replace(var.new_client_id, "-", "_")}"  # Replace hyphens with underscores
+  dataset_id = "client_${replace(var.new_client_id, "-", "_")}_raw"  # replace hyphens with underscores
   project    = var.project_id
   location   = var.data_location
 
@@ -37,8 +37,9 @@ resource "google_bigquery_dataset" "raw_dataset" {
   }
 }
 
+# create TRANSFORMED dataset
 resource "google_bigquery_dataset" "transformed_dataset" {
-  dataset_id = "transformed_${replace(var.new_client_id, "-", "_")}"  # replace hyphens with underscores
+  dataset_id = "client_${replace(var.new_client_id, "-", "_")}_transformed"  # replace hyphens with underscores
   project    = var.project_id
   location   = var.data_location
 
@@ -52,7 +53,7 @@ resource "google_bigquery_dataset" "transformed_dataset" {
   }
 }
 
-# Assign read-only access to client Service Account for TRANSFORMED dataset
+# assign read-only access to client Service Account for TRANSFORMED dataset
 resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   dataset_id = google_bigquery_dataset.transformed_dataset.dataset_id
   project    = var.project_id
@@ -60,7 +61,7 @@ resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
   member     = "serviceAccount:${google_service_account.client_sa.email}"
 }
 
-# Create Secret in Secret Manager for Client Token
+# create Secret in Secret Manager for Client token
 resource "google_secret_manager_secret" "client_token_secret" {
   secret_id = "client-${var.new_client_id}-token"
 
@@ -82,7 +83,7 @@ resource "google_secret_manager_secret_version" "client_token_version" {
   secret_data = var.new_client_token
 }
 
-# grant access to Master Service Account to Access Secrets
+# grant access to master Service Account to access Secrets
 resource "google_secret_manager_secret_iam_member" "master_secret_access" {
   secret_id = google_secret_manager_secret.client_token_secret.id
   role      = "roles/secretmanager.secretAccessor"
