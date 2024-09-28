@@ -16,7 +16,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
         }
 
         env {
-          name = "PROJECT_ID"
+          name  = "PROJECT_ID"
           value = var.project_id
         }
 
@@ -24,7 +24,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client_${replace(var.new_client_id, "-", "_")}_token"
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
@@ -34,6 +34,8 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
       service_account = var.master_sa_email
     }
   }
+
+  deletion_protection = false
 
   lifecycle {
     ignore_changes = [
@@ -58,7 +60,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
         }
 
         env {
-          name = "PROJECT_ID"
+          name  = "PROJECT_ID"
           value = var.project_id
         }
 
@@ -66,7 +68,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client_${replace(var.new_client_id, "-", "_")}_token"
+              secret  = "client-${var.new_client_id}-token"
               version = "latest"
             }
           }
@@ -76,6 +78,8 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
       service_account = var.master_sa_email
     }
   }
+
+  deletion_protection = false
 
   lifecycle {
     ignore_changes = [

@@ -12,7 +12,7 @@ terraform {
 
   backend "gcs" {
     bucket = "terraform-state-semantic-dev"
-    prefix = "terraform/client_state/unique-client-identifier"  # Replace with your actual new_client_id
+    prefix = "terraform/client_state/unique-client-identifier"  # replace with your actual new_client_id
   }
 }
 
@@ -41,10 +41,10 @@ module "cloud_run_jobs" {
   region                = var.region
   master_sa_email       = var.master_sa_email
   image_ingestion       = "gcr.io/semantc-dev/xero-ingestion:latest"
-  image_transformation  = "gcr.io/semantc-dev/xero-ingestion:latest"
   # image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+  image_transformation  = "gcr.io/semantc-dev/xero-ingestion:latest"
 
   depends_on = [
-    module.client_resources  # Reference the entire module to establish dependency
+    module.client_resources  # reference the entire module
   ]
 }
