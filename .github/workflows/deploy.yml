@@ -31,7 +31,7 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
-        working-directory: ./terraform
+        working-directory: /terraform
 
       - name: Terraform Plan
         id: plan
@@ -42,16 +42,16 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve tfplan
-        working-directory: ./terraform
+        working-directory: /terraform
 
       - name: Save Outputs
         if: success()
         run: terraform output -json > terraform_outputs.json
-        working-directory: ./terraform
+        working-directory: /terraform
 
       - name: Upload Terraform Outputs
         if: success()
         uses: actions/upload-artifact@v3
         with:
           name: terraform-outputs
-          path: ./terraform/terraform_outputs.json
+          path: /terraform/terraform_outputs.json
