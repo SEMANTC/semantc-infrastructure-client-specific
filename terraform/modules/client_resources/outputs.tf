@@ -5,7 +5,7 @@ output "client_sa_email" {
 
 output "client_bucket_name" {
   description = "Cloud Storage Bucket name for the client"
-  value       = google_storage_bucket.client_bucket.name
+  value       = google_storage_bucket.client_bucket_xero.name
 }
 
 output "raw_dataset_id" {
