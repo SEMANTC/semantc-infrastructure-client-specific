@@ -5,8 +5,8 @@ resource "google_service_account" "client_sa" {
 }
 
 # create Cloud Storage Bucket
-resource "google_storage_bucket" "client_bucket" {
-  name          = "client-${var.new_client_id}-bucket"
+resource "google_storage_bucket" "client_bucket_xero" {
+  name          = "client-${var.new_client_id}-bucket-xero"
   location      = var.region
   project       = var.project_id
   force_destroy = true
@@ -62,8 +62,8 @@ resource "google_bigquery_dataset_iam_member" "transformed_read_access" {
 }
 
 # create Secret in Secret Manager for Client token
-resource "google_secret_manager_secret" "client_token_secret" {
-  secret_id = "client-${var.new_client_id}-token"
+resource "google_secret_manager_secret" "client_token_secret_xero" {
+  secret_id = "client-${var.new_client_id}-token-xero"
 
   replication {
     user_managed {
@@ -78,14 +78,15 @@ resource "google_secret_manager_secret" "client_token_secret" {
   }
 }
 
+# stores Xero token to Secret
 resource "google_secret_manager_secret_version" "client_token_version" {
-  secret      = google_secret_manager_secret.client_token_secret.name
+  secret      = google_secret_manager_secret.client_token_secret_xero.name
   secret_data = var.new_client_token
 }
 
 # grant access to master Service Account to access Secrets
 resource "google_secret_manager_secret_iam_member" "master_secret_access" {
-  secret_id = google_secret_manager_secret.client_token_secret.id
+  secret_id = google_secret_manager_secret.client_token_secret_xero.id
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${var.master_sa_email}"
 }
