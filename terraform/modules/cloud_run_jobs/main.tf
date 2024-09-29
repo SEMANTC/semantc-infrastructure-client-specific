@@ -22,7 +22,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"
+              secret  = "client-${var.new_client_id}-token-xero"
               version = "latest"
             }
           }
@@ -66,7 +66,7 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
           name = "CLIENT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token"
+              secret  = "client-${var.new_client_id}-token-xero"
               version = "latest"
             }
           }
