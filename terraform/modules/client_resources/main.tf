@@ -80,7 +80,7 @@ resource "google_secret_manager_secret" "client_token_secret_xero" {
 
 # stores Xero token to Secret
 resource "google_secret_manager_secret_version" "client_token_version" {
-  secret = google_secret_manager_secret.client_token_secret_xero.name
+  secret      = google_secret_manager_secret.client_token_secret_xero.name
   secret_data = jsonencode({
     access_token  = var.new_client_token.access_token
     expires_in    = var.new_client_token.expires_in
@@ -91,9 +91,16 @@ resource "google_secret_manager_secret_version" "client_token_version" {
   })
 }
 
-# grant access to master Service Account to access Secrets
+# grant read-only access to master Service Account
 resource "google_secret_manager_secret_iam_member" "master_secret_access" {
   secret_id = google_secret_manager_secret.client_token_secret_xero.id
   role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${var.master_sa_email}"
+}
+
+# grant permission to add new secret versions to master Service Account
+resource "google_secret_manager_secret_iam_member" "master_secret_version_add" {
+  secret_id = google_secret_manager_secret.client_token_secret_xero.id
+  role      = "roles/secretmanager.secretVersionAdder"
   member    = "serviceAccount:${var.master_sa_email}"
 }
