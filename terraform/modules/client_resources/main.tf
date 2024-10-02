@@ -80,8 +80,15 @@ resource "google_secret_manager_secret" "client_token_secret_xero" {
 
 # stores Xero token to Secret
 resource "google_secret_manager_secret_version" "client_token_version" {
-  secret      = google_secret_manager_secret.client_token_secret_xero.name
-  secret_data = var.new_client_token
+  secret = google_secret_manager_secret.client_token_secret_xero.name
+  secret_data = jsonencode({
+    access_token  = var.new_client_token.access_token
+    expires_in    = var.new_client_token.expires_in
+    token_type    = var.new_client_token.token_type
+    refresh_token = var.new_client_token.refresh_token
+    id_token      = var.new_client_token.id_token
+    scope         = var.new_client_token.scope
+  })
 }
 
 # grant access to master Service Account to access Secrets
