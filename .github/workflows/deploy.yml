@@ -34,28 +34,25 @@ jobs:
         run: terraform validate
         working-directory: ./terraform
 
-      # **Debug Step: Print New Client Token**
+      # **Debug Step: Print New Client Token (Masked)**
       - name: Debug New Client Token
         run: |
-          # Mask sensitive parts of the token
-          MASKED_TOKEN=$(echo "${GITHUB_EVENT_CLIENT_TOKEN}" | jq '{
+          echo "New Client Token:"
+          echo '${{ toJson(github.event.client_payload.client_token) }}' | jq '{
             access_token: "****",
             expires_in: .expires_in,
             token_type: .token_type,
             refresh_token: "****",
             id_token: "****",
             scope: .scope
-          }')
-          echo "New Client Token: $MASKED_TOKEN"
-        env:
-          GITHUB_EVENT_CLIENT_TOKEN: ${{ toJson(github.event.client_payload.client_token) }}
+          }'
 
       - name: Terraform Plan
         id: plan
         run: |
           TF_LOG=DEBUG terraform plan -out=tfplan \
             -var="new_client_id=${{ github.event.client_payload.client_id }}" \
-            -var="new_client_token=${{ toJson(github.event.client_payload.client_token) }}" 2>&1 | tee terraform_plan.log
+            -var='new_client_token=${{ toJson(github.event.client_payload.client_token) }}' 2>&1 | tee terraform_plan.log
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
