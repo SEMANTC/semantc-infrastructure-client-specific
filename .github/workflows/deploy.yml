@@ -34,25 +34,42 @@ jobs:
         run: terraform validate
         working-directory: ./terraform
 
-      # **Debug Step: Print New Client Token (Masked)**
-      - name: Debug New Client Token
+      # **Step 1: Create terraform.tfvars.json**
+      - name: Create terraform.tfvars.json
         run: |
-          echo "New Client Token:"
-          echo '${{ toJson(github.event.client_payload.client_token) }}' | jq '{
-            access_token: "****",
-            expires_in: .expires_in,
-            token_type: .token_type,
-            refresh_token: "****",
-            id_token: "****",
-            scope: .scope
-          }'
+          echo '{
+            "new_client_id": "'"${{ github.event.client_payload.client_id }}"'",
+            "new_client_token": {
+              "access_token": "'"${{ github.event.client_payload.client_token.access_token }}"'",
+              "expires_in": '"${{ github.event.client_payload.client_token.expires_in }}"',
+              "token_type": "'"${{ github.event.client_payload.client_token.token_type }}"'",
+              "refresh_token": "'"${{ github.event.client_payload.client_token.refresh_token }}"'",
+              "id_token": "'"${{ github.event.client_payload.client_token.id_token }}"'",
+              "scope": "'"${{ github.event.client_payload.client_token.scope }}"'"
+            }
+          }' > ./terraform/terraform.tfvars.json
 
+      # **Step 2: Debug Step (Optional)**
+      - name: Verify terraform.tfvars.json
+        run: |
+          cat ./terraform/terraform.tfvars.json | jq '{
+            new_client_id: .new_client_id,
+            new_client_token: {
+              access_token: "****",
+              expires_in: .new_client_token.expires_in,
+              token_type: .new_client_token.token_type,
+              refresh_token: "****",
+              id_token: "****",
+              scope: .new_client_token.scope
+            }
+          }'
+        working-directory: ./terraform
+
+      # **Step 3: Terraform Plan Using terraform.tfvars.json**
       - name: Terraform Plan
         id: plan
         run: |
-          TF_LOG=DEBUG terraform plan -out=tfplan \
-            -var="new_client_id=${{ github.event.client_payload.client_id }}" \
-            -var='new_client_token=${{ toJson(github.event.client_payload.client_token) }}' 2>&1 | tee terraform_plan.log
+          TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json 2>&1 | tee terraform_plan.log
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
