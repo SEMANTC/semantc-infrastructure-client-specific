@@ -34,17 +34,12 @@ jobs:
         run: terraform validate
         working-directory: ./terraform
 
-      - name: Set New Client Token
-        id: set_token
-        run: |
-          echo "NEW_CLIENT_TOKEN=$(echo '${{ toJson(github.event.client_payload.client_token) }}' | jq -c .)" >> $GITHUB_ENV
-
       - name: Terraform Plan
         id: plan
         run: |
-          terraform plan -out=tfplan \
+          TF_LOG=DEBUG terraform plan -out=tfplan \
             -var="new_client_id=${{ github.event.client_payload.client_id }}" \
-            -var='new_client_token=${NEW_CLIENT_TOKEN}' 2>&1 | tee terraform_plan.log
+            -var="new_client_token=${{ github.event.client_payload.client_token }}" 2>&1 | tee terraform_plan.log
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
