@@ -84,6 +84,7 @@ resource "google_secret_manager_secret_version" "client_token_version" {
   secret_data = jsonencode({
     access_token  = var.new_client_token.access_token
     expires_in    = var.new_client_token.expires_in
+    expires_at    = var.new_client_token.expires_at
     token_type    = var.new_client_token.token_type
     refresh_token = var.new_client_token.refresh_token
     id_token      = var.new_client_token.id_token

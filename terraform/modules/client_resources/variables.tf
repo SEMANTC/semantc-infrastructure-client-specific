@@ -27,6 +27,7 @@ variable "new_client_token" {
   type = object({
     access_token  = string
     expires_in    = number
+    expires_at    = number
     token_type    = string
     refresh_token = string
     id_token      = string
