@@ -2,7 +2,7 @@ name: Terraform Deploy
 
 on:
   repository_dispatch:
-    types: [new_client]
+    types: [new_tenant]
 
 jobs:
   terraform:
@@ -27,7 +27,7 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=terraform-state-semantic-dev" \
-            -backend-config="prefix=terraform/client_state/${{ github.event.client_payload.client_id }}"
+            -backend-config="prefix=terraform/tenant_state/${{ github.event.tenant_payload.tenant_id }}"
         working-directory: ./terraform
 
       - name: Terraform Validate
@@ -38,15 +38,15 @@ jobs:
       - name: Create terraform.tfvars.json
         run: |
           echo '{
-            "new_client_id": "'"${{ github.event.client_payload.client_id }}"'",
-            "new_client_token": {
-              "access_token": "'"${{ github.event.client_payload.client_token.access_token }}"'",
-              "expires_in": '"${{ github.event.client_payload.client_token.expires_in }}"',
-              "expires_at": '"${{ github.event.client_payload.client_token.expires_at }}"',
-              "token_type": "'"${{ github.event.client_payload.client_token.token_type }}"'",
-              "refresh_token": "'"${{ github.event.client_payload.client_token.refresh_token }}"'",
-              "id_token": "'"${{ github.event.client_payload.client_token.id_token }}"'",
-              "scope": "'"${{ github.event.client_payload.client_token.scope }}"'"
+            "new_tenant_id": "'"${{ github.event.tenant_payload.tenant_id }}"'",
+            "new_tenant_token": {
+              "access_token": "'"${{ github.event.tenant_payload.tenant_token.access_token }}"'",
+              "expires_in": '"${{ github.event.tenant_payload.tenant_token.expires_in }}"',
+              "expires_at": '"${{ github.event.tenant_payload.tenant_token.expires_at }}"',
+              "token_type": "'"${{ github.event.tenant_payload.tenant_token.token_type }}"'",
+              "refresh_token": "'"${{ github.event.tenant_payload.tenant_token.refresh_token }}"'",
+              "id_token": "'"${{ github.event.tenant_payload.tenant_token.id_token }}"'",
+              "scope": "'"${{ github.event.tenant_payload.tenant_token.scope }}"'"
             }
           }' > ./terraform/terraform.tfvars.json
 
@@ -54,15 +54,15 @@ jobs:
       - name: Verify terraform.tfvars.json
         run: |
           cat ./terraform/terraform.tfvars.json | jq '{
-            new_client_id: .new_client_id,
-            new_client_token: {
+            new_tenant_id: .new_tenant_id,
+            new_tenant_token: {
               access_token: "****",
-              expires_in: .new_client_token.expires_in,
-              expires_at: .new_client_token.expires_at,
-              token_type: .new_client_token.token_type,
+              expires_in: .new_tenant_token.expires_in,
+              expires_at: .new_tenant_token.expires_at,
+              token_type: .new_tenant_token.token_type,
               refresh_token: "****",
               id_token: "****",
-              scope: .new_client_token.scope
+              scope: .new_tenant_token.scope
             }
           }'
         working-directory: ./terraform

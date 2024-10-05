@@ -1,29 +1,29 @@
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project id"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "gcp region"
   type        = string
 }
 
-variable "new_client_id" {
-  description = "Unique identifier for the new client"
+variable "new_tenant_id" {
+  description = "unique identifier for the new tenant"
   type        = string
 }
 
 variable "master_sa_email" {
-  description = "Email of the master service account"
+  description = "email of the master service account"
   type        = string
 }
 
 variable "image_ingestion" {
-  description = "Container image for the data ingestion job"
+  description = "container image for the data ingestion job"
   type        = string
 }
 
 variable "image_transformation" {
-  description = "Container image for the data transformation job"
+  description = "container image for the data transformation job"
   type        = string
 }

@@ -18,12 +18,12 @@ variable "data_location" {
   type        = string
 }
 
-variable "new_client_id" {
-  description = "Unique identifier for the new client"
+variable "new_tenant_id" {
+  description = "Unique identifier for the new tenant"
   type        = string
 }
 
-variable "new_client_token" {
+variable "new_tenant_token" {
   type = object({
     access_token  = string
     expires_in    = number
@@ -34,5 +34,5 @@ variable "new_client_token" {
     scope         = string
   })
   sensitive   = true
-  description = "the new client's Xero OAuth token"
+  description = "the new tenant's Xero OAuth token"
 }

@@ -12,7 +12,7 @@ terraform {
 
   backend "gcs" {
     bucket = "terraform-state-semantic-dev"
-    prefix = "terraform/client_state/unique-client-identifier"  # replace with your actual new_client_id
+    prefix = "terraform/tenant_state/unique-tenant-identifier"  # replace with your actual new_tenant_id
   }
 }
 
@@ -22,21 +22,21 @@ provider "google" {
   credentials = var.terraform_sa_key_path != null ? file(var.terraform_sa_key_path) : null
 }
 
-# Module for Client Resources
-module "client_resources" {
-  source            = "./modules/client_resources"
-  new_client_id     = var.new_client_id
+# Module for Tenant Resources
+module "tenant_resources" {
+  source            = "./modules/tenant_resources"
+  new_tenant_id     = var.new_tenant_id
   project_id        = var.project_id
   region            = var.region
   data_location     = var.data_location
-  new_client_token  = var.new_client_token
+  new_tenant_token  = var.new_tenant_token
   master_sa_email   = var.master_sa_email
 }
 
 # Module for Cloud Run Jobs
 module "cloud_run_jobs" {
   source                = "./modules/cloud_run_jobs"
-  new_client_id         = var.new_client_id
+  new_tenant_id         = var.new_tenant_id
   project_id            = var.project_id
   region                = var.region
   master_sa_email       = var.master_sa_email
@@ -45,6 +45,6 @@ module "cloud_run_jobs" {
   image_transformation  = "gcr.io/semantc-dev/xero-ingestion:latest"
 
   depends_on = [
-    module.client_resources  # reference the entire module
+    module.tenant_resources  # reference the entire module
   ]
 }

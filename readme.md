@@ -2,7 +2,7 @@
 
 ![Semantc Logo](https://your-logo-url.com/logo.png) <!-- Replace with your actual logo -->
 
-Welcome to the **Semantc Infrastructure** repository! 🚀 This project leverages **Terraform** to manage and deploy scalable, secure, and client-specific resources on **Google Cloud Platform (GCP)**. Our mission is to provide robust infrastructure solutions that ensure data isolation, security, and efficiency for every client.
+Welcome to the **Semantc Infrastructure** repository! 🚀 This project leverages **Terraform** to manage and deploy scalable, secure, and tenant-specific resources on **Google Cloud Platform (GCP)**. Our mission is to provide robust infrastructure solutions that ensure data isolation, security, and efficiency for every tenant.
 
 ## 📋 Table of Contents
 
@@ -25,36 +25,36 @@ Welcome to the **Semantc Infrastructure** repository! 🚀 This project leverage
 
 ## ✨ Introduction
 
-The **Semantc Infrastructure** project is designed to automate the deployment and management of client-specific resources on GCP using Terraform. By adhering to best practices and the principle of least privilege, we ensure that each client's data and services remain isolated and secure.
+The **Semantc Infrastructure** project is designed to automate the deployment and management of tenant-specific resources on GCP using Terraform. By adhering to best practices and the principle of least privilege, we ensure that each tenant's data and services remain isolated and secure.
 
 ## 🎯 Goals
 
-- **Scalability:** Efficiently manage infrastructure for multiple clients with ease.
-- **Security:** Implement strict access controls to safeguard client data.
-- **Isolation:** Ensure complete separation of resources for each client to prevent data leaks.
+- **Scalability:** Efficiently manage infrastructure for multiple tenants with ease.
+- **Security:** Implement strict access controls to safeguard tenant data.
+- **Isolation:** Ensure complete separation of resources for each tenant to prevent data leaks.
 - **Automation:** Streamline deployments and updates using Terraform for consistency and reliability.
-- **Maintainability:** Facilitate easy modifications and scalability as client needs evolve.
+- **Maintainability:** Facilitate easy modifications and scalability as tenant needs evolve.
 
 ## 🏗️ Architecture Overview
 
-Our infrastructure is built around a modular Terraform setup, enabling reusable components for managing client resources and orchestrating data pipelines. Here's a high-level view:
+Our infrastructure is built around a modular Terraform setup, enabling reusable components for managing tenant resources and orchestrating data pipelines. Here's a high-level view:
 
 1. **Master Service Account:** Centralized account with elevated permissions to manage pipelines and deploy resources.
-2. **Client Service Accounts:** Dedicated accounts for each client with restricted, read-only access to their specific datasets and storage.
+2. **Tenant Service Accounts:** Dedicated accounts for each tenant with restricted, read-only access to their specific datasets and storage.
 3. **Cloud Run Jobs:** Automated tasks for data ingestion and transformation, running under the master service account.
-4. **BigQuery Datasets & Storage Buckets:** Isolated data storage solutions for each client, ensuring data integrity and security.
+4. **BigQuery Datasets & Storage Buckets:** Isolated data storage solutions for each tenant, ensuring data integrity and security.
 
 ![Architecture Diagram](https://your-architecture-diagram-url.com/diagram.png) <!-- Replace with your actual architecture diagram -->
 
 ## ⚙️ Key Components
 
 - **Terraform Modules:**
-  - **Client Resources:** Manages creation of service accounts, BigQuery datasets, and Cloud Storage buckets for each client.
+  - **Tenant Resources:** Manages creation of service accounts, BigQuery datasets, and Cloud Storage buckets for each tenant.
   - **Cloud Run Jobs:** Handles deployment of data ingestion and transformation jobs.
   
 - **Service Accounts:**
   - **Master Service Account:** Orchestrates infrastructure and manages data pipelines with necessary permissions.
-  - **Client Service Accounts:** Provides clients with limited access to their own resources.
+  - **Tenant Service Accounts:** Provides tenants with limited access to their own resources.
 
 - **Cloud Run Jobs:**
   - **Data Ingestion:** Automates the process of importing data into BigQuery.
@@ -125,15 +125,15 @@ cd semantc-infrastructure/terraform
        --display-name="Master Service Account for Pipelines"
    ```
 
-3. **Client Service Accounts:**
+3. **Tenant Service Accounts:**
 
-   For each client (e.g., `client1`, `client2`):
+   For each tenant (e.g., `tenant1`, `tenant2`):
 
    ```bash
-   gcloud iam service-accounts create client1-sa \
-       --display-name="Service Account for Client1"
+   gcloud iam service-accounts create tenant1-sa \
+       --display-name="Service Account for Tenant1"
    
-   # Repeat for other clients
+   # Repeat for other tenants
    ```
 
 #### d. Assign IAM Roles
@@ -164,20 +164,20 @@ cd semantc-infrastructure/terraform
        --role="roles/storage.admin"
    ```
 
-3. **Assign Read-Only Roles to Client Service Accounts:**
+3. **Assign Read-Only Roles to Tenant Service Accounts:**
 
    ```bash
-   # BigQuery Read Access for Client1
+   # BigQuery Read Access for Tenant1
    gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:client1-sa@semantc-dev.iam.gserviceaccount.com" \
+       --member="serviceAccount:tenant1-sa@semantc-dev.iam.gserviceaccount.com" \
        --role="roles/bigquery.dataViewer"
    
-   # Cloud Storage Read Access for Client1
+   # Cloud Storage Read Access for Tenant1
    gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:client1-sa@semantc-dev.iam.gserviceaccount.com" \
+       --member="serviceAccount:tenant1-sa@semantc-dev.iam.gserviceaccount.com" \
        --role="roles/storage.objectViewer"
    
-   # Repeat for other clients
+   # Repeat for other tenants
    ```
 
 #### e. Generate Service Account Keys
@@ -288,8 +288,8 @@ We welcome contributions from the community! Whether it's reporting issues, sugg
 
 Security is paramount. We adhere to the principle of least privilege, ensuring that each service account has only the permissions necessary to perform its tasks. Here's how we maintain security:
 
-- **Service Account Isolation:** Separate accounts for Terraform management, master operations, and client-specific access.
-- **Read-Only Access for Clients:** Clients can only read their own data, preventing unauthorized modifications.
+- **Service Account Isolation:** Separate accounts for Terraform management, master operations, and tenant-specific access.
+- **Read-Only Access for Tenants:** Tenants can only read their own data, preventing unauthorized modifications.
 - **Secure Key Management:** Service account keys are stored securely and never committed to version control.
 - **Regular Audits:** Periodic reviews of IAM roles and permissions to ensure compliance and security.
 
