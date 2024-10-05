@@ -1,40 +1,40 @@
 variable "terraform_sa_key_path" {
-  description = "Path to the Terraform service account key JSON file"
+  description = "path to the terraform service account key json file"
   type        = string
   default     = null
 }
 
 variable "project_id" {
-  description = "GCP Project ID"
+  description = "gcp project id"
   type        = string
   default     = "semantc-dev"
 }
 
 variable "region" {
-  description = "GCP Region"
+  description = "gcp region"
   type        = string
   default     = "us-central1"
 }
 
 variable "master_sa_email" {
-  description = "Master Service Account Email"
+  description = "master service account email"
   type        = string
   default     = "master-sa@semantc-dev.iam.gserviceaccount.com"
 }
 
 variable "data_location" {
-  description = "Location for data storage services"
+  description = "location for data storage services"
   type        = string
   default     = "US"
 }
 
 # Existing variables
-variable "new_client_id" {
-  description = "Unique Client Identifier"
+variable "new_tenant_id" {
+  description = "unique tenant identifier"
   type        = string
 }
 
-variable "new_client_token" {
+variable "new_tenant_token" {
   type = object({
     access_token  = string
     expires_in    = number
@@ -45,5 +45,5 @@ variable "new_client_token" {
     scope         = string
   })
   sensitive   = true
-  description = "the new client's Xero OAuth token"
+  description = "the new tenant's xero oauth token"
 }

@@ -1,5 +1,5 @@
 resource "google_cloud_run_v2_job" "data_ingestion_job" {
-  name     = "data-ingestion-${var.new_client_id}"
+  name     = "data-ingestion-${var.new_tenant_id}"
   location = var.region
   project  = var.project_id
 
@@ -9,8 +9,8 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
         image = var.image_ingestion
 
         env {
-          name  = "CLIENT_ID"
-          value = var.new_client_id
+          name  = "TENANT_ID"
+          value = var.new_tenant_id
         }
 
         env {
@@ -19,10 +19,10 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
         }
 
         env {
-          name = "CLIENT_TOKEN"
+          name = "TENANT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token-xero"
+              secret  = "tenant-${var.new_tenant_id}-token-xero"
               version = "latest"
             }
           }
@@ -43,7 +43,7 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
 }
 
 resource "google_cloud_run_v2_job" "data_transformation_job" {
-  name     = "data-transformation-${var.new_client_id}"
+  name     = "data-transformation-${var.new_tenant_id}"
   location = var.region
   project  = var.project_id
 
@@ -53,8 +53,8 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
         image = var.image_transformation
 
         env {
-          name  = "CLIENT_ID"
-          value = var.new_client_id
+          name  = "TENANT_ID"
+          value = var.new_tenant_id
         }
 
         env {
@@ -63,10 +63,10 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
         }
 
         env {
-          name = "CLIENT_TOKEN"
+          name = "TENANT_TOKEN"
           value_source {
             secret_key_ref {
-              secret  = "client-${var.new_client_id}-token-xero"
+              secret  = "tenant-${var.new_tenant_id}-token-xero"
               version = "latest"
             }
           }
