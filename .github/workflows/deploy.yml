@@ -27,30 +27,28 @@ jobs:
         run: |
           terraform init \
             -backend-config="bucket=terraform-state-semantic-dev" \
-            -backend-config="prefix=terraform/tenant_state/${{ github.event.tenant_payload.tenant_id }}"
+            -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
         working-directory: ./terraform
 
       - name: Terraform Validate
         run: terraform validate
         working-directory: ./terraform
 
-      # **Step 1: Create terraform.tfvars.json**
       - name: Create terraform.tfvars.json
         run: |
           echo '{
-            "new_tenant_id": "'"${{ github.event.tenant_payload.tenant_id }}"'",
+            "new_tenant_id": "'"${{ github.event.client_payload.tenant_id }}"'",
             "new_tenant_token": {
-              "access_token": "'"${{ github.event.tenant_payload.tenant_token.access_token }}"'",
-              "expires_in": '"${{ github.event.tenant_payload.tenant_token.expires_in }}"',
-              "expires_at": '"${{ github.event.tenant_payload.tenant_token.expires_at }}"',
-              "token_type": "'"${{ github.event.tenant_payload.tenant_token.token_type }}"'",
-              "refresh_token": "'"${{ github.event.tenant_payload.tenant_token.refresh_token }}"'",
-              "id_token": "'"${{ github.event.tenant_payload.tenant_token.id_token }}"'",
-              "scope": "'"${{ github.event.tenant_payload.tenant_token.scope }}"'"
+              "access_token": "'"${{ github.event.client_payload.tenant_token.access_token }}"'",
+              "expires_in": '"${{ github.event.client_payload.tenant_token.expires_in }}"',
+              "expires_at": '"${{ github.event.client_payload.tenant_token.expires_at }}"',
+              "token_type": "'"${{ github.event.client_payload.tenant_token.token_type }}"'",
+              "refresh_token": "'"${{ github.event.client_payload.tenant_token.refresh_token }}"'",
+              "id_token": "'"${{ github.event.client_payload.tenant_token.id_token }}"'",
+              "scope": "'"${{ github.event.client_payload.tenant_token.scope }}"'"
             }
           }' > ./terraform/terraform.tfvars.json
 
-      # **Step 2: Debug Step (Optional)**
       - name: Verify terraform.tfvars.json
         run: |
           cat ./terraform/terraform.tfvars.json | jq '{
@@ -67,7 +65,6 @@ jobs:
           }'
         working-directory: ./terraform
 
-      # **Step 3: Terraform Plan Using terraform.tfvars.json**
       - name: Terraform Plan
         id: plan
         run: |
