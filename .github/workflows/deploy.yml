@@ -42,6 +42,7 @@ jobs:
             "new_client_token": {
               "access_token": "'"${{ github.event.client_payload.client_token.access_token }}"'",
               "expires_in": '"${{ github.event.client_payload.client_token.expires_in }}"',
+              "expires_at": '"${{ github.event.client_payload.client_token.expires_at }}"',
               "token_type": "'"${{ github.event.client_payload.client_token.token_type }}"'",
               "refresh_token": "'"${{ github.event.client_payload.client_token.refresh_token }}"'",
               "id_token": "'"${{ github.event.client_payload.client_token.id_token }}"'",
@@ -57,6 +58,7 @@ jobs:
             new_client_token: {
               access_token: "****",
               expires_in: .new_client_token.expires_in,
+              expires_at: .new_client_token.expires_at,
               token_type: .new_client_token.token_type,
               refresh_token: "****",
               id_token: "****",
