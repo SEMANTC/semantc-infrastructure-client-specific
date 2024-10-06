@@ -98,4 +98,4 @@ jobs:
         run: |
           gcloud run jobs execute data-transformation-${{ github.event.client_payload.tenant_id }} \
             --region=${{ secrets.GCP_REGION }} \
-            --project=${{ secrets.GCP_PROJECT_ID }}
+            --project=${{ secrets.GCP_PROJECT }}
