@@ -96,4 +96,6 @@ jobs:
       - name: Trigger Data Ingestion Job
         if: success()
         run: |
-          gcloud run jobs execute data-ingestion-${{ github.event.client_payload.tenant_id }}
+          gcloud run jobs execute data-transformation-${{ github.event.client_payload.tenant_id }} \
+            --region=${{ secrets.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
