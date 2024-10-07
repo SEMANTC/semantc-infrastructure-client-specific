@@ -1,3 +1,6 @@
+##############################
+# Data Ingestion Job
+##############################
 resource "google_cloud_run_v2_job" "data_ingestion_job" {
   name     = "data-ingestion-${var.new_tenant_id}"
   location = var.region
@@ -27,6 +30,12 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
             }
           }
         }
+
+        # new environment variable to trigger transformation job
+        env {
+          name  = "TRANSFORMATION_JOB_URI"
+          value = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.data_transformation_job.name}:run"
+        }
       }
 
       service_account = var.master_sa_email
@@ -42,6 +51,9 @@ resource "google_cloud_run_v2_job" "data_ingestion_job" {
   }
 }
 
+##############################
+# Data Transformation Job
+##############################
 resource "google_cloud_run_v2_job" "data_transformation_job" {
   name     = "data-transformation-${var.new_tenant_id}"
   location = var.region
@@ -86,6 +98,9 @@ resource "google_cloud_run_v2_job" "data_transformation_job" {
   }
 }
 
+##############################
+# Cloud Scheduler Job for Data Ingestion
+##############################
 resource "google_cloud_scheduler_job" "data_ingestion_scheduler" {
   name             = "schedule-data-ingestion-${var.new_tenant_id}"
   description      = "Triggers the data ingestion job every 4 hours"
