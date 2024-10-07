@@ -12,7 +12,7 @@ terraform {
 
   backend "gcs" {
     bucket = "terraform-state-semantic-dev"
-    prefix = "terraform/tenant_state/unique-tenant-identifier"  # replace with your actual new_tenant_id
+    prefix = "terraform/tenant_state"
   }
 }
 
