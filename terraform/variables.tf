@@ -7,7 +7,7 @@ variable "terraform_sa_key_path" {
 variable "project_id" {
   description = "gcp project id"
   type        = string
-  default     = "semantc-dev"
+  default     = "semantc-dev-437910"
 }
 
 variable "region" {
@@ -19,7 +19,7 @@ variable "region" {
 variable "master_sa_email" {
   description = "master service account email"
   type        = string
-  default     = "master-sa@semantc-dev.iam.gserviceaccount.com"
+  default     = "master-sa@semantc-dev-437910.iam.gserviceaccount.com"
 }
 
 variable "data_location" {

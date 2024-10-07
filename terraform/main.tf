@@ -11,7 +11,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "terraform-state-semantic-dev"
+    bucket = "terraform-state-semantc-dev-437910"
     prefix = "terraform/tenant_state"
   }
 }
@@ -40,8 +40,8 @@ module "cloud_run_jobs" {
   project_id            = var.project_id
   region                = var.region
   master_sa_email       = var.master_sa_email
-  image_ingestion       = "gcr.io/semantc-dev/xero-ingestion:latest"
-  image_transformation  = "gcr.io/semantc-dev/xero-transformation:latest"
+  image_ingestion       = "gcr.io/semantc-dev-437910/xero-ingestion:latest"
+  image_transformation  = "gcr.io/semantc-dev-437910/xero-transformation:latest"
 
   depends_on = [
     module.tenant_resources  # reference the entire module
