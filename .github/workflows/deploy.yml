@@ -18,6 +18,27 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      # **Added Step: Create GCS Bucket if It Doesn't Exist**
+      - name: Create GCS Bucket if Not Exists
+        run: |
+          BUCKET_NAME="terraform-state-semantic-dev"
+          REGION="${{ secrets.GCP_REGION }}"
+          PROJECT_ID="${{ secrets.GCP_PROJECT }}"
+          
+          if ! gsutil ls -b gs://$BUCKET_NAME/ 2>/dev/null; then
+            echo "Bucket $BUCKET_NAME does not exist. Creating..."
+            gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://$BUCKET_NAME/
+            gsutil uniformbucketlevelaccess set on gs://$BUCKET_NAME/
+            echo "Bucket $BUCKET_NAME created."
+          else
+            echo "Bucket $BUCKET_NAME already exists."
+          fi
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -113,6 +134,11 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
