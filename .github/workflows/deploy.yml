@@ -27,21 +27,29 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
-      - name: Create GCS Bucket if Not Exists
+      - name: Create or Verify GCS Buckets
         run: |
+          echo "Checking if Terraform state bucket $BUCKET_NAME exists..."
           if ! gsutil ls -b gs://$BUCKET_NAME > /dev/null 2>&1; then
             echo "Bucket $BUCKET_NAME does not exist. Creating..."
-            gsutil mb -p ${{ secrets.GCP_PROJECT }} -c STANDARD -l ${{ secrets.GCP_REGION }} gs://$BUCKET_NAME
-            gsutil versioning set on gs://$BUCKET_NAME
-            echo "Bucket $BUCKET_NAME created."
+            if gsutil mb -p ${{ secrets.GCP_PROJECT }} -c STANDARD -l ${{ secrets.GCP_REGION }} gs://$BUCKET_NAME; then
+              echo "Bucket $BUCKET_NAME created successfully."
+              gsutil versioning set on gs://$BUCKET_NAME
+            else
+              echo "Failed to create bucket $BUCKET_NAME"
+              exit 1
+            fi
           else
             echo "Bucket $BUCKET_NAME already exists."
           fi
-
-      - name: Remove Terraform Lock (if exists)
-        run: |
-          gsutil rm gs://$BUCKET_NAME/terraform/tenant_state/${{ github.event.client_payload.tenant_id }}/default.tflock || true
-        continue-on-error: true
+          
+          TENANT_BUCKET="tenant-${{ github.event.client_payload.tenant_id }}-bucket-xero"
+          echo "Checking if tenant bucket $TENANT_BUCKET exists..."
+          if ! gsutil ls -b gs://$TENANT_BUCKET > /dev/null 2>&1; then
+            echo "Tenant bucket $TENANT_BUCKET does not exist. It will be created by Terraform."
+          else
+            echo "Tenant bucket $TENANT_BUCKET already exists."
+          fi
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -85,9 +93,7 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          for i in {1..3}; do
-            TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json && break || sleep 30
-          done
+          TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json 2>&1 | tee terraform_plan.log
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
@@ -97,6 +103,7 @@ jobs:
           path: ./terraform/terraform_plan.log
 
       - name: Terraform Apply
+        if: success()
         run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
 
