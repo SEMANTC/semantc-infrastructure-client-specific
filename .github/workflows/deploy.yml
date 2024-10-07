@@ -56,17 +56,6 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Terraform Init
-        run: |
-          terraform init \
-            -backend-config="bucket=$BUCKET_NAME" \
-            -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
-        working-directory: ./terraform
-
-      - name: Terraform Validate
-        run: terraform validate
-        working-directory: ./terraform
-
       - name: Create terraform.tfvars.json
         run: |
           echo '{
@@ -76,6 +65,10 @@ jobs:
 
       - name: Verify terraform.tfvars.json
         run: |
+          if [ ! -f ./terraform/terraform.tfvars.json ]; then
+            echo "terraform.tfvars.json file not found!"
+            exit 1
+          fi
           cat ./terraform/terraform.tfvars.json | jq '{
             new_tenant_id: .new_tenant_id,
             new_tenant_token: {
@@ -90,10 +83,28 @@ jobs:
           }'
         working-directory: ./terraform
 
+      - name: Remove Terraform Lock (if exists)
+        run: |
+          gsutil rm gs://$BUCKET_NAME/terraform/tenant_state/${{ github.event.client_payload.tenant_id }}/default.tflock || true
+        continue-on-error: true
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=$BUCKET_NAME" \
+            -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
       - name: Terraform Plan
         id: plan
         run: |
-          TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json 2>&1 | tee terraform_plan.log
+          for i in {1..3}; do
+            TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json && break || sleep 10
+          done
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
@@ -150,6 +161,18 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create terraform.tfvars.json
+        run: |
+          echo '{
+            "new_tenant_id": "${{ github.event.client_payload.tenant_id }}",
+            "new_tenant_token": ${{ toJson(github.event.client_payload.tenant_token) }}
+          }' > ./terraform/terraform.tfvars.json
+
+      - name: Remove Terraform Lock (if exists)
+        run: |
+          gsutil rm gs://$BUCKET_NAME/terraform/tenant_state/${{ github.event.client_payload.tenant_id }}/default.tflock || true
+        continue-on-error: true
 
       - name: Terraform Init for Destroy
         run: |
