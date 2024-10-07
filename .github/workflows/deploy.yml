@@ -4,6 +4,10 @@ on:
   repository_dispatch:
     types: [new_tenant]
 
+env:
+  TF_VERSION: '1.3.0'
+  BUCKET_NAME: terraform-state-semantic-dev
+
 jobs:
   terraform-deploy:
     name: Terraform Deploy
@@ -23,31 +27,31 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT }}
 
-      # **Added Step: Create GCS Bucket if It Doesn't Exist**
       - name: Create GCS Bucket if Not Exists
         run: |
-          BUCKET_NAME="terraform-state-semantic-dev"
-          REGION="${{ secrets.GCP_REGION }}"
-          PROJECT_ID="${{ secrets.GCP_PROJECT }}"
-          
-          if ! gsutil ls -b gs://$BUCKET_NAME/ 2>/dev/null; then
+          if ! gsutil ls -b gs://$BUCKET_NAME > /dev/null 2>&1; then
             echo "Bucket $BUCKET_NAME does not exist. Creating..."
-            gsutil mb -p $PROJECT_ID -c STANDARD -l $REGION gs://$BUCKET_NAME/
-            gsutil uniformbucketlevelaccess set on gs://$BUCKET_NAME/
+            gsutil mb -p ${{ secrets.GCP_PROJECT }} -c STANDARD -l ${{ secrets.GCP_REGION }} gs://$BUCKET_NAME
+            gsutil versioning set on gs://$BUCKET_NAME
             echo "Bucket $BUCKET_NAME created."
           else
             echo "Bucket $BUCKET_NAME already exists."
           fi
 
+      - name: Remove Terraform Lock (if exists)
+        run: |
+          gsutil rm gs://$BUCKET_NAME/terraform/tenant_state/${{ github.event.client_payload.tenant_id }}/default.tflock || true
+        continue-on-error: true
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: '1.3.0'
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init
         run: |
           terraform init \
-            -backend-config="bucket=terraform-state-semantic-dev" \
+            -backend-config="bucket=$BUCKET_NAME" \
             -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
         working-directory: ./terraform
 
@@ -58,16 +62,8 @@ jobs:
       - name: Create terraform.tfvars.json
         run: |
           echo '{
-            "new_tenant_id": "'"${{ github.event.client_payload.tenant_id }}"'",
-            "new_tenant_token": {
-              "access_token": "'"${{ github.event.client_payload.tenant_token.access_token }}"'",
-              "expires_in": '"${{ github.event.client_payload.tenant_token.expires_in }}"',
-              "expires_at": '"${{ github.event.client_payload.tenant_token.expires_at }}"',
-              "token_type": "'"${{ github.event.client_payload.tenant_token.token_type }}"'",
-              "refresh_token": "'"${{ github.event.client_payload.tenant_token.refresh_token }}"'",
-              "id_token": "'"${{ github.event.client_payload.tenant_token.id_token }}"'",
-              "scope": "'"${{ github.event.client_payload.tenant_token.scope }}"'"
-            }
+            "new_tenant_id": "${{ github.event.client_payload.tenant_id }}",
+            "new_tenant_token": ${{ toJson(github.event.client_payload.tenant_token) }}
           }' > ./terraform/terraform.tfvars.json
 
       - name: Verify terraform.tfvars.json
@@ -89,7 +85,9 @@ jobs:
       - name: Terraform Plan
         id: plan
         run: |
-          TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json 2>&1 | tee terraform_plan.log
+          for i in {1..3}; do
+            TF_LOG=DEBUG terraform plan -out=tfplan -var-file=terraform.tfvars.json && break || sleep 30
+          done
         working-directory: ./terraform
 
       - name: Upload Terraform Plan Log
@@ -126,6 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: terraform-deploy
     if: failure()
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -143,12 +142,12 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: '1.3.0'
+          terraform_version: ${{ env.TF_VERSION }}
 
       - name: Terraform Init for Destroy
         run: |
           terraform init \
-            -backend-config="bucket=terraform-state-semantic-dev" \
+            -backend-config="bucket=$BUCKET_NAME" \
             -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
         working-directory: ./terraform
 
