@@ -5,8 +5,8 @@ on:
     types: [new_tenant]
 
 jobs:
-  terraform:
-    name: Terraform
+  terraform-deploy:
+    name: Terraform Deploy
     runs-on: ubuntu-latest
 
     steps:
@@ -99,3 +99,33 @@ jobs:
           gcloud run jobs execute data-ingestion-${{ github.event.client_payload.tenant_id }} \
             --region=${{ secrets.GCP_REGION }} \
             --project=${{ secrets.GCP_PROJECT }}
+
+  terraform-destroy:
+    name: Terraform Destroy on Failure
+    runs-on: ubuntu-latest
+    needs: terraform-deploy
+    if: failure()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: '1.3.0'
+
+      - name: Terraform Init for Destroy
+        run: |
+          terraform init \
+            -backend-config="bucket=terraform-state-semantic-dev" \
+            -backend-config="prefix=terraform/tenant_state/${{ github.event.client_payload.tenant_id }}"
+        working-directory: ./terraform
+
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve -var-file=terraform.tfvars.json
+        working-directory: ./terraform
