@@ -1,7 +1,5 @@
-# terraform/main.tf
-
 terraform {
-  required_version = ">= 1.3.0"
+  required_version = ">= 1.0"
 
   required_providers {
     google = {
@@ -11,8 +9,8 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "terraform-state-semantc-dev-437910"
-    prefix = "terraform/tenant_state"
+    bucket = "terraform-state-semantc-sandbox"
+    prefix = "terraform/state/client"
   }
 }
 
@@ -40,8 +38,8 @@ module "cloud_run_jobs" {
   project_id            = var.project_id
   region                = var.region
   master_sa_email       = var.master_sa_email
-  image_ingestion       = "gcr.io/semantc-dev-437910/xero-ingestion:latest"
-  image_transformation  = "gcr.io/semantc-dev-437910/xero-transformation:latest"
+  image_ingestion       = "gcr.io/${var.project_id}/xero-ingestion:latest"
+  image_transformation  = "gcr.io/${var.project_id}/xero-transformation:latest"
 
   depends_on = [
     module.tenant_resources  # reference the entire module
