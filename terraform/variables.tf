@@ -7,6 +7,7 @@ variable "terraform_sa_key_path" {
 variable "project_id" {
   description = "gcp project id"
   type        = string
+  default     = "semantc-sandbox"
 }
 
 variable "region" {

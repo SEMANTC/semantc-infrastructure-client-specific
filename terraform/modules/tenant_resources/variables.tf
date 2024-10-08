@@ -1,25 +1,25 @@
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project ID"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "gcp region"
   type        = string
 }
 
 variable "master_sa_email" {
-  description = "Email of the master service account"
+  description = "email of the master service account"
   type        = string
 }
 
 variable "data_location" {
-  description = "Location for data storage services"
+  description = "location for data storage services"
   type        = string
 }
 
 variable "new_tenant_id" {
-  description = "Unique identifier for the new tenant"
+  description = "unique identifier for the new tenant"
   type        = string
 }
 
