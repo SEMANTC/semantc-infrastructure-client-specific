@@ -18,7 +18,7 @@ variable "region" {
 variable "master_sa_email" {
   description = "master service account email"
   type        = string
-  # default     = "master-sa@{semantc-sandbox.iam.gserviceaccount.com"
+  default     = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
 }
 
 variable "data_location" {
