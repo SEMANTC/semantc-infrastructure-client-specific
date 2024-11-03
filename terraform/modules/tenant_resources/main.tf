@@ -1,3 +1,4 @@
+# terraform/modules/tenant_resources/main.tf
 resource "google_service_account" "tenant_sa" {
   account_id   = "tenant-${substr(var.new_tenant_id, 0, 20)}-sa"  # truncate to ensure <=30 characters
   display_name = "Service account for tenant ${var.new_tenant_id}"

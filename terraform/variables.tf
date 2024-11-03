@@ -1,3 +1,4 @@
+# terraform/variables
 variable "terraform_sa_key_path" {
   description = "path to the terraform service account key json file"
   type        = string

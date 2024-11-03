@@ -1,3 +1,4 @@
+# terraform/modules/tenant_resources/variables.tf
 variable "project_id" {
   description = "gcp project ID"
   type        = string

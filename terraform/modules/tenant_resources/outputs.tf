@@ -1,3 +1,4 @@
+# terraform/modules/tenant_resources/outputs.tf
 output "tenant_sa_email" {
   description = "Service Account email for the tenant"
   value       = google_service_account.tenant_sa.email

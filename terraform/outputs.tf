@@ -1,3 +1,4 @@
+# terraform/outputs
 output "tenant_service_account_email" {
   description = "service account email for the tenant"
   value       = module.tenant_resources.tenant_sa_email
