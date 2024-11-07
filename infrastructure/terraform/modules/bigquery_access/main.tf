@@ -8,7 +8,7 @@ resource "google_bigquery_dataset_iam_member" "raw_data_access" {
 
   condition {
     title       = "user_tables_access"
-    description = "Access to tables starting with user ID"
+    description = "access to tables starting with user id"
     expression  = "resource.name.extract(\"projects/${var.project_id}/datasets/raw_data/tables/(.+)\").matches(\"^${var.user_id}__.*\")"
   }
 }
@@ -22,7 +22,7 @@ resource "google_bigquery_dataset_iam_member" "transformed_data_access" {
 
   condition {
     title       = "user_tables_access"
-    description = "Access to tables starting with user ID"
+    description = "access to tables starting with user id"
     expression  = "resource.name.extract(\"projects/${var.project_id}/datasets/transformed_data/tables/(.+)\").matches(\"^${var.user_id}__.*\")"
   }
 }

@@ -1,22 +1,22 @@
 # variables.tf
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project id"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "gcp region"
   type        = string
   default     = "us-central1"
 }
 
 variable "user_id" {
-  description = "Firebase Auth user ID"
+  description = "firebase auth user id"
   type        = string
 }
 
 variable "terraform_sa_key_path" {
-  description = "Path to Terraform service account key file"
+  description = "path to terraform service account key file"
   type        = string
   default     = null
 }

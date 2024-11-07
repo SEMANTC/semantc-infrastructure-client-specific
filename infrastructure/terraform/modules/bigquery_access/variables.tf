@@ -1,15 +1,15 @@
 # modules/bigquery_access/variables.tf
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project id"
   type        = string
 }
 
 variable "user_id" {
-  description = "Firebase Auth user ID"
+  description = "firebase auth user id"
   type        = string
 }
 
 variable "service_account_email" {
-  description = "Email of the user's service account"
+  description = "email of the user's service account"
   type        = string
 }

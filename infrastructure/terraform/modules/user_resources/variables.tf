@@ -5,11 +5,11 @@ variable "project_id" {
 }
 
 variable "user_id" {
-  description = "Firebase Auth user ID"
+  description = "firebase auth user id"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "gcp region"
   type        = string
 }

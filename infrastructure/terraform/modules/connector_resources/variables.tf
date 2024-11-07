@@ -1,48 +1,48 @@
 # modules/connector_resources/variables.tf
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project id"
   type        = string
 }
 
 variable "user_id" {
-  description = "Firebase Auth user ID"
+  description = "firebase auth user id"
   type        = string
 }
 
 variable "region" {
-  description = "GCP region"
+  description = "gcp region"
   type        = string
 }
 
 variable "connector_type" {
-  description = "Type of connector (e.g., xero, shopify)"
+  description = "type of connector (e.g., xero, shopify)"
   type        = string
 }
 
 variable "connector_config" {
-  description = "Connector configuration from Firestore"
+  description = "connector configuration from firestore"
   type        = map(any)
 }
 
 variable "connector_credentials" {
-  description = "Connector credentials from Firestore"
+  description = "connector credentials from firestore"
   type        = map(any)
   sensitive   = true
 }
 
 variable "user_service_account" {
-  description = "Email of the user's service account"
+  description = "email of the user's service account"
   type        = string
 }
 
 variable "ingestion_image" {
-  description = "Container image for ingestion job"
+  description = "container image for ingestion job"
   type        = string
   default     = "gcr.io/project-id/ingestion:latest"
 }
 
 variable "transformation_image" {
-  description = "Container image for transformation job"
+  description = "container image for transformation job"
   type        = string
   default     = "gcr.io/project-id/transformation:latest"
 }

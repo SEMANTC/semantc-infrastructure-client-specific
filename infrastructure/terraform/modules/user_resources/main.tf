@@ -2,7 +2,7 @@
 # CREATE USER SERVICE ACCOUNT
 resource "google_service_account" "user_sa" {
   account_id   = "${var.user_id}-sa"
-  display_name = "Service account for user ${var.user_id}"
+  display_name = "service account for user ${var.user_id}"
   project      = var.project_id
 }
 
