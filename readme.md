@@ -1,381 +1,232 @@
-# 🌐 Semantc Infrastructure
+# 🌐 Multi-Connector Infrastructure
 
-![Semantc Logo](https://your-logo-url.com/logo.png) <!-- Replace with your actual logo -->
-
-Welcome to the **Semantc Infrastructure** repository! 🚀 This project leverages **Terraform** to manage and deploy scalable, secure, and tenant-specific resources on **Google Cloud Platform (GCP)**. Our mission is to provide robust infrastructure solutions that ensure data isolation, security, and efficiency for every tenant.
+This project automates the provisioning of GCP resources for user integrations (Xero, Shopify, etc.) using Terraform. Resources are created automatically when a new connection is established through the web application.
 
 ## 📋 Table of Contents
 
 - [✨ Introduction](#-introduction)
 - [🎯 Goals](#-goals)
-- [🏗️ Architecture Overview](#-architecture-overview)
+- [🏗️ Architecture Overview](#️-architecture-overview)
 - [⚙️ Key Components](#️-key-components)
 - [🚀 Getting Started](#-getting-started)
-  - [1. Prerequisites](#1-prerequisites)
-  - [2. Setup Instructions](#2-setup-instructions)
 - [🔧 Usage](#-usage)
-- [🤝 Contributing](#-contributing)
 - [🔒 Security](#-security)
 - [❓ Troubleshooting](#-troubleshooting)
 - [📚 Resources](#-resources)
-- [📫 Contact](#-contact)
-- [📝 License](#-license)
-
----
 
 ## ✨ Introduction
 
-The **Semantc Infrastructure** project is designed to automate the deployment and management of tenant-specific resources on GCP using Terraform. By adhering to best practices and the principle of least privilege, we ensure that each tenant's data and services remain isolated and secure.
+This infrastructure project automates the creation and management of GCP resources for user integrations. It uses Terraform to provision resources based on Firestore documents created by the web application when users connect to services like Xero or Shopify.
 
 ## 🎯 Goals
 
-- **Scalability:** Efficiently manage infrastructure for multiple tenants with ease.
-- **Security:** Implement strict access controls to safeguard tenant data.
-- **Isolation:** Ensure complete separation of resources for each tenant to prevent data leaks.
-- **Automation:** Streamline deployments and updates using Terraform for consistency and reliability.
-- **Maintainability:** Facilitate easy modifications and scalability as tenant needs evolve.
+- Automatic resource provisioning triggered by user connections
+- Secure credential management using Firestore
+- Isolated resources per user
+- Scalable multi-connector support
+- Cost-effective shared infrastructure where appropriate
 
 ## 🏗️ Architecture Overview
 
-Our infrastructure is built around a modular Terraform setup, enabling reusable components for managing tenant resources and orchestrating data pipelines. Here's a high-level view:
+```mermaid
+graph TD
+    A[Web App] -->|User Authenticates| B[Firebase Auth]
+    A -->|Creates Connection| C[Firestore Documents]
+    C -->|Triggers| D[Cloud Function]
+    D -->|Executes| E[Terraform]
+    E -->|Creates| F[GCP Resources]
+    F1[User Service Account] --> F
+    F2[Storage Buckets] --> F
+    F3[Cloud Run Jobs] --> F
+    F4[BigQuery Access] --> F
+```
 
-1. **Master Service Account:** Centralized account with elevated permissions to manage pipelines and deploy resources.
-2. **Tenant Service Accounts:** Dedicated accounts for each tenant with restricted, read-only access to their specific datasets and storage.
-3. **Cloud Run Jobs:** Automated tasks for data ingestion and transformation, running under the master service account.
-4. **BigQuery Datasets & Storage Buckets:** Isolated data storage solutions for each tenant, ensuring data integrity and security.
-
-![Architecture Diagram](https://your-architecture-diagram-url.com/diagram.png) <!-- Replace with your actual architecture diagram -->
+Key workflow:
+1. User connects via web app
+2. Firestore documents created:
+   - `/users/{userId}/integrations/connectors`
+   - `/users/{userId}/integrations/credentials`
+3. Cloud Function triggered
+4. Terraform provisions resources
 
 ## ⚙️ Key Components
 
-- **Terraform Modules:**
-  - **Tenant Resources:** Manages creation of service accounts, BigQuery datasets, and Cloud Storage buckets for each tenant.
-  - **Cloud Run Jobs:** Handles deployment of data ingestion and transformation jobs.
-  
-- **Service Accounts:**
-  - **Master Service Account:** Orchestrates infrastructure and manages data pipelines with necessary permissions.
-  - **Tenant Service Accounts:** Provides tenants with limited access to their own resources.
+### Firestore Structure
+```
+/users/{userId}/
+├── integrations/
+    ├── connectors/
+    │   ├── active: boolean
+    │   ├── updatedAt: timestamp
+    │   └── {connector}:
+    │       ├── active: boolean
+    │       ├── tenantId: string
+    │       ├── tenantName: string
+    │       └── updatedAt: timestamp
+    └── credentials/
+        └── {connector}:
+            ├── accessToken: string
+            ├── refreshToken: string
+            ├── expiresAt: number
+            ├── tokenType: string
+            ├── scope: string
+            └── lastUpdated: timestamp
+```
 
-- **Cloud Run Jobs:**
-  - **Data Ingestion:** Automates the process of importing data into BigQuery.
-  - **Data Transformation:** Processes and transforms raw data into actionable insights.
+### Resource Naming Conventions
+- Service Account: `{userId}-sa`
+- Storage Bucket: `{userId}-{connector}`
+- Cloud Run Jobs: 
+  - `{userId}-{connector}-ingestion`
+  - `{userId}-{connector}-transformation`
+- BigQuery Tables: `{userId}__{connector}__{entity}`
 
 ## 🚀 Getting Started
 
-### 1. Prerequisites
+### Prerequisites
 
-Before diving in, ensure you have the following:
+- GCP Project
+- Enabled APIs:
+  ```bash
+  gcloud services enable \
+    cloudfunction.googleapis.com \
+    cloudbuild.googleapis.com \
+    run.googleapis.com \
+    bigquery.googleapis.com \
+    storage.googleapis.com \
+    firestore.googleapis.com \
+    cloudscheduler.googleapis.com
+  ```
 
-- **Google Cloud Account:** With permissions to create projects and manage IAM roles.
-- **Google Cloud SDK (`gcloud`):** [Installation Guide](https://cloud.google.com/sdk/docs/install)
-- **Terraform:** [Installation Guide](https://learn.hashicorp.com/tutorials/terraform/install-cli)
-- **Service Account Keys:** JSON key files for Terraform and master service accounts.
+### Initial Setup
 
-### 2. Setup Instructions
-
-Follow these steps to set up and deploy the infrastructure:
-
-#### a. Clone the Repository
-
+1. **Create Service Account**
 ```bash
-git clone https://github.com/your-username/semantc-infrastructure.git
-cd semantc-infrastructure/terraform
+export PROJECT_ID="your-project-id"
+
+# Create Terraform service account
+gcloud iam service-accounts create terraform-sa \
+    --display-name="Terraform Service Account"
+
+# Assign necessary roles
+for role in storage.admin cloudscheduler.admin run.admin bigquery.dataEditor iam.serviceAccountCreator secretmanager.admin datastore.viewer
+do
+  gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:terraform-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/$role"
+done
+
+# Create and download key
+gcloud iam service-accounts keys create terraform-sa-key.json \
+    --iam-account=terraform-sa@$PROJECT_ID.iam.gserviceaccount.com
 ```
 
-#### b. Configure GCP Project
-
-1. **Create a New Project:**
-
-   ```bash
-   gcloud projects create semantc-dev --name="Semantc Development"
-   ```
-
-2. **Set the New Project as Active:**
-
-   ```bash
-   gcloud config set project semantc-dev
-   ```
-
-3. **Enable Required APIs:**
-
-   ```bash
-   gcloud services enable run.googleapis.com \
-       bigquery.googleapis.com \
-       storage.googleapis.com \
-       cloudresourcemanager.googleapis.com \
-       secretmanager.googleapis.com \
-       cloudbuild.googleapis.com \
-       logging.googleapis.com \
-       monitoring.googleapis.com
-   ```
-
-#### c. Create Service Accounts
-
-1. **Terraform Service Account:**
-
-   ```bash
-   gcloud iam service-accounts create terraform-sa \
-       --display-name="Terraform Service Account"
-   ```
-
-2. **Master Service Account:**
-
-   ```bash
-   gcloud iam service-accounts create master-sa \
-       --display-name="Master Service Account for Pipelines"
-   ```
-
-3. **Tenant Service Accounts:**
-
-   For each tenant (e.g., `tenant1`, `tenant2`):
-
-   ```bash
-   gcloud iam service-accounts create tenant1-sa \
-       --display-name="Service Account for Tenant1"
-   
-   # Repeat for other tenants
-   ```
-
-#### d. Assign IAM Roles
-
-1. **Assign Roles to Terraform Service Account:**
-
-   *⚠️ **Warning:** Assigning `roles/owner` is not recommended for production. It's better to assign specific roles based on your needs.*
-
-   ```bash
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:terraform-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/owner"
-   ```
-
-2. **Assign Roles to Master Service Account:**
-
-   ```bash
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:master-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/run.admin"
-   
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:master-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/bigquery.admin"
-   
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:master-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/storage.admin"
-   ```
-
-3. **Assign Read-Only Roles to Tenant Service Accounts:**
-
-   ```bash
-   # BigQuery Read Access for Tenant1
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:tenant1-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/bigquery.dataViewer"
-   
-   # Cloud Storage Read Access for Tenant1
-   gcloud projects add-iam-policy-binding semantc-dev \
-       --member="serviceAccount:tenant1-sa@semantc-dev.iam.gserviceaccount.com" \
-       --role="roles/storage.objectViewer"
-   
-   # Repeat for other tenants
-   ```
-
-#### e. Generate Service Account Keys
-
-1. **Terraform Service Account Key:**
-
-   ```bash
-   gcloud iam service-accounts keys create ~/terraform-sa-key.json \
-       --iam-account=terraform-sa@semantc-dev.iam.gserviceaccount.com
-   ```
-
-2. **Master Service Account Key:** *(If needed)*
-
-   ```bash
-   gcloud iam service-accounts keys create ~/master-sa-key.json \
-       --iam-account=master-sa@semantc-dev.iam.gserviceaccount.com
-   ```
-
-> **⚠️ Security Note:** Store these JSON key files securely. Do **not** commit them to version control.
-
-#### f. Configure Authentication for Terraform
-
-Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to your Terraform service account key:
-
+2. **Create Storage Bucket for Terraform State**
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="~/terraform-sa-key.json"
+gsutil mb gs://terraform-state-$PROJECT_ID
 ```
 
-> **Tip:** Add this line to your shell profile (e.g., `.bashrc` or `.zshrc`) for persistence.
+3. **Deploy Cloud Function**
+```bash
+# Create Cloud Function directory
+mkdir -p functions/provision-connector
+cd functions/provision-connector
 
----
+# Deploy function
+gcloud functions deploy provision-connector \
+    --runtime python39 \
+    --trigger-event providers/cloud.firestore/eventTypes/document.create \
+    --trigger-resource "projects/$PROJECT_ID/databases/(default)/documents/users/{userId}/integrations/connectors"
+```
 
 ## 🔧 Usage
 
-With the setup complete, you can now manage your infrastructure using Terraform. Here's how:
+### Project Structure
+```
+.
+├── terraform/
+│   ├── main.tf              # Main configuration
+│   ├── variables.tf         # Variable definitions
+│   ├── outputs.tf          # Output definitions
+│   └── modules/
+│       ├── user_resources/  # User service account, IAM
+│       ├── connector_resources/  # Connector-specific resources
+│       └── bigquery_access/  # Table permissions
+├── functions/
+│   └── provision-connector/
+│       ├── main.py          # Cloud Function code
+│       ├── requirements.txt
+│       └── terraform/       # Terraform files for function
+└── .gitignore
+```
 
-1. **Navigate to the Terraform Directory:**
+### Deployment Process
 
-   ```bash
-   cd terraform/
-   ```
+1. **Initialize Terraform:**
+```bash
+cd terraform
+terraform init
+```
 
-2. **Initialize Terraform:**
+2. **Test Configuration:**
+```bash
+terraform plan -var-file=example.tfvars
+```
 
-   This command initializes the Terraform working directory, downloading necessary providers and modules.
+3. **Monitor Deployments:**
+```bash
+# View Cloud Function logs
+gcloud functions logs read provision-connector
 
-   ```bash
-   terraform init
-   ```
-
-3. **Validate Configuration:**
-
-   Ensure that the Terraform files are syntactically correct and internally consistent.
-
-   ```bash
-   terraform validate
-   ```
-
-4. **Plan the Deployment:**
-
-   Review the changes Terraform will make to your infrastructure.
-
-   ```bash
-   terraform plan
-   ```
-
-5. **Apply the Configuration:**
-
-   Deploy the infrastructure as defined in your Terraform files.
-
-   ```bash
-   terraform apply
-   ```
-
-   - **Confirm** by typing `yes` when prompted.
-
----
-
-## 🤝 Contributing
-
-We welcome contributions from the community! Whether it's reporting issues, suggesting features, or submitting pull requests, your input helps us improve.
-
-### How to Contribute
-
-1. **Fork the Repository**
-2. **Create a Feature Branch**
-
-   ```bash
-   git checkout -b feature/YourFeature
-   ```
-
-3. **Commit Your Changes**
-4. **Push to the Branch**
-
-   ```bash
-   git push origin feature/YourFeature
-   ```
-
-5. **Open a Pull Request**
-
-   Describe your changes and submit the PR for review.
-
-> **Note:** Please ensure that your contributions adhere to the project's coding standards and best practices.
-
----
+# List resources
+gcloud run jobs list
+gsutil ls
+bq ls
+```
 
 ## 🔒 Security
 
-Security is paramount. We adhere to the principle of least privilege, ensuring that each service account has only the permissions necessary to perform its tasks. Here's how we maintain security:
-
-- **Service Account Isolation:** Separate accounts for Terraform management, master operations, and tenant-specific access.
-- **Read-Only Access for Tenants:** Tenants can only read their own data, preventing unauthorized modifications.
-- **Secure Key Management:** Service account keys are stored securely and never committed to version control.
-- **Regular Audits:** Periodic reviews of IAM roles and permissions to ensure compliance and security.
-
----
+- One service account per user
+- Least privilege access
+- Resources isolated by user ID
+- Credentials stored in Firestore
+- Table-level access control in BigQuery
 
 ## ❓ Troubleshooting
 
-Encountered an issue? Here are some common problems and solutions:
+### Common Issues
 
-### 1. **API Errors**
-
-**Error Message:**
+1. **Permissions:**
+```bash
+# Verify service account roles
+gcloud projects get-iam-policy $PROJECT_ID \
+    --flatten="bindings[].members" \
+    --format='table(bindings.role)' \
+    --filter="bindings.members:terraform-sa"
 ```
-Error: Error when reading or editing Project Service semantc-dev/run.googleapis.com: googleapi: Error 403: Cloud Resource Manager API has not been used in project...
+
+2. **Cloud Function Logs:**
+```bash
+gcloud functions logs read provision-connector --limit=50
 ```
 
-**Solution:**
-- **Enable the Cloud Resource Manager API:**
-  ```bash
-  gcloud services enable cloudresourcemanager.googleapis.com --project=semantc-dev
-  ```
-- **Ensure Correct Project is Set:**
-  ```bash
-  gcloud config set project semantc-dev
-  ```
-- **Retry Terraform Command:**
-  ```bash
-  terraform apply
-  ```
+3. **Resource Verification:**
+```bash
+# List user's Cloud Run jobs
+gcloud run jobs list --filter="metadata.name ~ ^{userId}"
 
-### 2. **Authentication Issues**
+# List user's buckets
+gsutil ls -p $PROJECT_ID
 
-**Solution:**
-- **Verify `GOOGLE_APPLICATION_CREDENTIALS`:**
-  ```bash
-  echo $GOOGLE_APPLICATION_CREDENTIALS
-  # Should output the path to your Terraform service account key
-  ```
-- **Re-authenticate with Service Account:**
-  ```bash
-  gcloud auth activate-service-account --key-file=~/terraform-sa-key.json
-  ```
-
-### 3. **Permission Denied Errors**
-
-**Solution:**
-- **Ensure Service Accounts Have Correct Roles:**
-  Review and adjust IAM roles assigned to each service account as necessary.
-
-### 4. **API Not Enabled**
-
-**Solution:**
-- **Enable Missing APIs:**
-  ```bash
-  gcloud services enable <API_NAME> --project=semantc-dev
-  ```
-  Replace `<API_NAME>` with the required API (e.g., `run.googleapis.com`).
-
----
+# Check BigQuery permissions
+bq show --format=prettyjson raw_data
+```
 
 ## 📚 Resources
 
-- [Terraform Documentation](https://www.terraform.io/docs)
-- [Google Cloud IAM Roles](https://cloud.google.com/iam/docs/understanding-roles)
-- [Google Cloud Storage Docs](https://cloud.google.com/storage/docs)
-- [Google BigQuery Docs](https://cloud.google.com/bigquery/docs)
-- [Google Cloud Run Docs](https://cloud.google.com/run/docs)
-- [Terraform Best Practices](https://www.terraform.io/docs/language/best-practices/index.html)
+- [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
+- [Cloud Functions Documentation](https://cloud.google.com/functions/docs)
+- [Firestore Documentation](https://cloud.google.com/firestore/docs)
+- [Cloud Run Jobs](https://cloud.google.com/run/docs/create-jobs)
 
----
-
-## 📫 Contact
-
-Have questions or need support? Reach out to us!
-
-- **Fernando Máximo Ferreira**
-- **Email:** fernando.maximo@example.com
-- **GitHub:** [@fernandomaximoferreira](https://github.com/fernandomaximoferreira)
-- **LinkedIn:** [Fernando Máximo Ferreira](https://www.linkedin.com/in/fernandomaximoferreira)
-
----
-
-## 📝 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-> **⚠️ Disclaimer:** Ensure that all sensitive information, such as service account keys, is stored securely and not exposed in version control systems or public repositories.
+Would you like me to expand on any section or add additional information?
