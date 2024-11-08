@@ -1,3 +1,4 @@
+# functions/main.py
 import os
 import json
 import subprocess
@@ -7,14 +8,41 @@ import sys
 from google.cloud import firestore
 from google.cloud import storage
 from datetime import datetime
+from flask import Request
 
-# Configure logging to show everything
+# Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     stream=sys.stdout
 )
 logger = logging.getLogger(__name__)
+
+def setup_terraform(version="1.5.7"):
+    """Install Terraform in the function environment."""
+    logger.info(f"Setting up Terraform version {version}")
+    try:
+        # Create directories
+        os.makedirs('/tmp/terraform', exist_ok=True)
+        
+        # Download Terraform
+        url = f"https://releases.hashicorp.com/terraform/{version}/terraform_{version}_linux_amd64.zip"
+        subprocess.run(f"curl -o /tmp/terraform/terraform.zip {url}", shell=True, check=True)
+        
+        # Unzip and make executable
+        subprocess.run("unzip /tmp/terraform/terraform.zip -d /tmp/terraform", shell=True, check=True)
+        subprocess.run("chmod +x /tmp/terraform/terraform", shell=True, check=True)
+        
+        # Add to PATH
+        os.environ['PATH'] = f"/tmp/terraform:{os.environ['PATH']}"
+        
+        # Verify installation
+        subprocess.run("terraform version", shell=True, check=True)
+        logger.info("Terraform setup complete")
+        
+    except Exception as e:
+        logger.error(f"Error setting up Terraform: {str(e)}")
+        raise
 
 def setup_terraform_workspace(user_id):
     """Download Terraform configs from GCS and set up workspace."""
@@ -55,7 +83,7 @@ def run_terraform_command(command, work_dir, user_id, project_id="semantc-sandbo
     env["TF_VAR_project_id"] = project_id
     env["TF_VAR_region"] = region
     
-    logger.debug(f"Environment variables set: {env}")
+    logger.debug(f"Environment variables set: {json.dumps({k: env[k] for k in env if 'TF_VAR' in k or 'GOOGLE_PROJECT' in k}, indent=2)}")
     
     try:
         # Run terraform command
@@ -87,20 +115,29 @@ def run_terraform_command(command, work_dir, user_id, project_id="semantc-sandbo
         logger.error(f"Error running terraform command: {str(e)}", exc_info=True)
         raise
 
-def provision_connector(event, context):
-    """Triggered by a change to a Firestore document."""
-    # Log the entire event and context
-    logger.info("Function triggered!")
-    logger.info(f"Event: {json.dumps(event, indent=2)}")
-    logger.info(f"Context: {vars(context)}")
+def provision_connector(request: Request):
+    """HTTP Cloud Function."""
+    logger.info("Function provision_connector invoked")
+    
+    # Setup Terraform first
+    setup_terraform()
+    
+    # Parse the request
+    try:
+        request_json = request.get_json(silent=True)
+        if not request_json or 'userId' not in request_json:
+            error_msg = "Missing userId in request"
+            logger.error(error_msg)
+            return (error_msg, 400)
+        
+        user_id = request_json['userId']
+        logger.info(f"Received request for user: {user_id}")
+    except Exception as e:
+        error_msg = f"Error parsing request: {str(e)}"
+        logger.error(error_msg)
+        return (error_msg, 400)
     
     try:
-        # Extract user ID and path from context
-        path_parts = context.resource.split('/documents/')[1].split('/')
-        user_id = path_parts[1]
-        
-        logger.info(f"Starting resource provisioning for user: {user_id}")
-        
         # Initialize Firestore client
         db = firestore.Client()
         
@@ -109,21 +146,23 @@ def provision_connector(event, context):
         connector_doc = connector_ref.get()
         
         if not connector_doc.exists:
-            logger.warning(f"No connector document found for user {user_id}")
-            return
-            
+            error_msg = f"No connector document found for user {user_id}"
+            logger.warning(error_msg)
+            return (error_msg, 404)
+                
         # Get connector data
         connector_data = connector_doc.to_dict()
-        logger.info(f"Retrieved connector data: {json.dumps(connector_data, indent=2)}")
+        logger.info(f"Retrieved connector data: {json.dumps(connector_data, indent=2, default=str)}")
         
         # Verify if there are active connectors
         active_connectors = {k: v for k, v in connector_data.items() 
-                           if isinstance(v, dict) and v.get('active', False)}
+                             if isinstance(v, dict) and v.get('active', False)}
         
         if not active_connectors:
-            logger.warning(f"No active connectors found for user {user_id}")
-            return
-            
+            error_msg = f"No active connectors found for user {user_id}"
+            logger.warning(error_msg)
+            return (error_msg, 404)
+                
         logger.info(f"Found active connectors: {list(active_connectors.keys())}")
         
         # Set up terraform workspace
@@ -165,6 +204,8 @@ def provision_connector(event, context):
             connector_ref.set(status_update, merge=True)
             logger.info("Updated Firestore with success status")
             
+            return ('Resources provisioned successfully', 200)
+                
         finally:
             # Cleanup temporary directory
             if 'work_dir' in locals():
@@ -174,7 +215,7 @@ def provision_connector(event, context):
                     logger.info(f"Cleaned up workspace: {work_dir}")
                 except Exception as e:
                     logger.error(f"Error cleaning up workspace: {str(e)}")
-        
+            
     except Exception as e:
         error_message = f"Error provisioning resources: {str(e)}"
         logger.error(error_message, exc_info=True)
@@ -184,11 +225,11 @@ def provision_connector(event, context):
                 status_update = {
                     'lastProvisioned': datetime.utcnow(),
                     'provisioningStatus': 'failed',
-                    'provisioningError': error_message
+                    'provisioningError': str(e)
                 }
                 connector_ref.set(status_update, merge=True)
                 logger.info("Updated Firestore with error status")
         except Exception as update_error:
             logger.error(f"Error updating status in Firestore: {str(update_error)}")
         
-        raise
+        return (error_message, 500)

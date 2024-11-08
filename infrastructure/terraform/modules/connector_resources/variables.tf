@@ -19,17 +19,6 @@ variable "connector_type" {
   type        = string
 }
 
-variable "connector_config" {
-  description = "connector configuration from firestore"
-  type        = map(any)
-}
-
-variable "connector_credentials" {
-  description = "connector credentials from firestore"
-  type        = map(any)
-  sensitive   = true
-}
-
 variable "user_service_account" {
   description = "email of the user's service account"
   type        = string

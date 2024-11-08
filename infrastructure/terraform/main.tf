@@ -29,19 +29,6 @@ provider "google-beta" {
   region      = var.region
 }
 
-# FIRESTORE DATA SOURCE FOR CONNECTOR CONFIGURATION
-data "google_firestore_document" "connectors" {
-  project    = var.project_id
-  collection = "users/${var.user_id}/integrations"
-  document_id = "connectors"
-}
-
-data "google_firestore_document" "credentials" {
-  project    = var.project_id
-  collection = "users/${var.user_id}/integrations"
-  document_id = "credentials"
-}
-
 # CREATE BASE USER RESOURCES (SERVICE ACCOUNT, IAM)
 module "user_resources" {
   source     = "./modules/user_resources"
@@ -52,21 +39,14 @@ module "user_resources" {
 
 # CREATE CONNECTOR-SPECIFIC RESOURCES FOR EACH ACTIVE CONNECTOR
 module "connector_resources" {
-  for_each = {
-    for k, v in jsondecode(data.google_firestore_document.connectors.fields).connectors.mapValue.fields :
-    k => v if v.mapValue.fields.active.booleanValue == true
-  }
-
   source = "./modules/connector_resources"
   
   project_id = var.project_id
   user_id    = var.user_id
   region     = var.region
   
-  connector_type = each.key
-  connector_config = each.value.mapValue.fields
-  connector_credentials = jsondecode(data.google_firestore_document.credentials.fields)[each.key]
-  
+  connector_type = "xero"
+
   user_service_account = module.user_resources.service_account_email
   
   depends_on = [module.user_resources]
