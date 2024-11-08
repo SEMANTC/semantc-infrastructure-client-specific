@@ -22,13 +22,11 @@ terraform {
 provider "google" {
   project     = var.project_id
   region      = var.region
-  credentials = var.terraform_sa_key_path != null ? file(var.terraform_sa_key_path) : null
 }
 
 provider "google-beta" {
   project     = var.project_id
   region      = var.region
-  credentials = var.terraform_sa_key_path != null ? file(var.terraform_sa_key_path) : null
 }
 
 # FIRESTORE DATA SOURCE FOR CONNECTOR CONFIGURATION
