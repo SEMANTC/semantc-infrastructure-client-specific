@@ -1,6 +1,6 @@
 # infrastructure/terraform/modules/user_resources/variables.tf
 variable "project_id" {
-  description = "GCP project ID"
+  description = "gcp project id"
   type        = string
 }
 

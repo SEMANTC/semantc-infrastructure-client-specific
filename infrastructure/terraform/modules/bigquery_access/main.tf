@@ -1,13 +1,13 @@
 # infrastructure/terraform/modules/bigquery_access/main.tflocals {
-locals {
-  # sanitize names for GCP resources
-  sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
+module "user_id" {
+  source  = "../user_id_helper"
+  user_id = var.user_id
 }
 
 # CREATE USER-SPECIFIC AUTHORIZED VIEWS
 resource "google_bigquery_dataset" "user_views" {
-  dataset_id    = "${local.sanitized_name}_views"
-  friendly_name = "Views for user ${var.user_id}"
+  dataset_id    = "${module.user_id.bigquery_name}_views"
+  friendly_name = "views for user ${var.user_id}"
   description   = "contains authorized views to user's tables"
   location      = "US"
   project       = var.project_id
@@ -26,7 +26,7 @@ resource "google_bigquery_table" "raw_data_view" {
     FROM (
       SELECT *
       FROM `${var.project_id}.raw_data.INFORMATION_SCHEMA.TABLES`
-      WHERE table_name LIKE '${local.sanitized_name}_%'
+      WHERE table_name LIKE '${module.user_id.bigquery_name}_%'
       LIMIT 0
     )
     EOF
@@ -47,7 +47,7 @@ resource "google_bigquery_table" "transformed_data_view" {
     FROM (
       SELECT *
       FROM `${var.project_id}.transformed_data.INFORMATION_SCHEMA.TABLES`
-      WHERE table_name LIKE '${local.sanitized_name}_%'
+      WHERE table_name LIKE '${module.user_id.bigquery_name}_%'
       LIMIT 0
     )
     EOF

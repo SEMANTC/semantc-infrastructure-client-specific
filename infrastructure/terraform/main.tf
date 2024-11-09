@@ -1,7 +1,7 @@
 # infrastructure/terraform/main.tf
 terraform {
-  required_version = ">= 1.0"
-
+  required_version = ">= 1.5.7"
+  
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -11,11 +11,6 @@ terraform {
       source  = "hashicorp/google-beta"
       version = "~> 6.0"
     }
-  }
-
-  backend "gcs" {
-    bucket = "terraform-state-semantc-sandbox"
-    prefix = "terraform/state/users"
   }
 }
 

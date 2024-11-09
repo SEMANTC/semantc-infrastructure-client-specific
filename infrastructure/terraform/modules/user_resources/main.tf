@@ -1,12 +1,12 @@
 # infrastructure/terraform/modules/user_resources/main.tf
-locals {
-  # sanitize names for GCP resources
-  sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
+module "user_id" {
+  source  = "../user_id_helper"
+  user_id = var.user_id
 }
 
 # CREATE USER SERVICE ACCOUNT
 resource "google_service_account" "user_sa" {
-  account_id   = "${local.sanitized_name}-sa"
+  account_id   = "${module.user_id.sanitized_name}-sa"
   display_name = "Service account for user ${var.user_id}"
   project      = var.project_id
 }

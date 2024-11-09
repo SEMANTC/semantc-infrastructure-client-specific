@@ -1,7 +1,9 @@
-# infrastructure/terraform/modules/connector_resources/main.tf
+module "user_id" {
+  source  = "../user_id_helper"
+  user_id = var.user_id
+}
+
 locals {
-  # sanitize names for GCP resources
-  sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
   # create image names based on connector type
   ingestion_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
   transformation_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
@@ -9,7 +11,7 @@ locals {
 
 # CREATE STORAGE BUCKET FOR CONNECTOR DATA
 resource "google_storage_bucket" "connector_bucket" {
-  name          = "${local.sanitized_name}-${lower(var.connector_type)}"
+  name          = "${module.user_id.sanitized_name}-${lower(var.connector_type)}"
   location      = var.region
   project       = var.project_id
   force_destroy = true
@@ -26,7 +28,7 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
 
 # CREATE CLOUD RUN INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  name                = "${local.sanitized_name}-${lower(var.connector_type)}-ingestion"
+  name                = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-ingestion"
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -60,11 +62,15 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
       service_account = var.user_service_account
     }
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # CREATE CLOUD RUN TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  name                = "${local.sanitized_name}-${lower(var.connector_type)}-transformation"
+  name                = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-transformation"
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -93,11 +99,15 @@ resource "google_cloud_run_v2_job" "transformation_job" {
       service_account = var.user_service_account
     }
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # CREATE CLOUD SCHEDULER FOR INGESTION
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = "${local.sanitized_name}-${lower(var.connector_type)}-scheduler"
+  name             = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-scheduler"
   description      = "Triggers the ${var.connector_type} ingestion job"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"
