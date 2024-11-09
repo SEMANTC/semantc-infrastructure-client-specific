@@ -1,6 +1,4 @@
-gsutil -m cp -r infrastructure/terraform/* gs://semantc-terraform-configs/
-
-# 1.ŹENABLE REQUIRED APIS
+# 1.ENABLE REQUIRED APIS
 gcloud services enable \
     cloudfunctions.googleapis.com \
     run.googleapis.com \
@@ -22,7 +20,7 @@ gcloud functions deploy provision-connector \
     --service-account=terraform-sa@semantc-sandbox.iam.gserviceaccount.com \
     --trigger-http \
     --allow-unauthenticated \
-    --memory=512MB \
+    --memory=2048MB \
     --timeout=540s
 
 # 4. TEST THE DEPLOYMENT

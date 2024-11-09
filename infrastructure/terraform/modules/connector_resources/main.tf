@@ -1,16 +1,17 @@
 # modules/connector_resources/main.tf
+locals {
+  # Sanitize names for GCP resources
+  sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
+}
+
 # CREATE STORAGE BUCKET FOR CONNECTOR DATA
 resource "google_storage_bucket" "connector_bucket" {
-  name          = "${var.user_id}-${var.connector_type}"
+  name          = "${local.sanitized_name}-${lower(var.connector_type)}"
   location      = var.region
   project       = var.project_id
   force_destroy = true
 
   uniform_bucket_level_access = true
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 # GRANT BUCKET ACCESS
@@ -22,7 +23,7 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
 
 # CREATE CLOUD RUN INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  name     = "${var.user_id}-${var.connector_type}-ingestion"
+  name     = "${local.sanitized_name}-${lower(var.connector_type)}-ingestion"
   location = var.region
   project  = var.project_id
 
@@ -59,7 +60,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
 # CREATE CLOUD RUN TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  name     = "${var.user_id}-${var.connector_type}-transformation"
+  name     = "${local.sanitized_name}-${lower(var.connector_type)}-transformation"
   location = var.region
   project  = var.project_id
 
@@ -91,7 +92,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
 
 # CREATE CLOUD SCHEDULER FOR INGESTION
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = "${var.user_id}-${var.connector_type}-scheduler"
+  name             = "${local.sanitized_name}-${lower(var.connector_type)}-scheduler"
   description      = "Triggers the ${var.connector_type} ingestion job"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"

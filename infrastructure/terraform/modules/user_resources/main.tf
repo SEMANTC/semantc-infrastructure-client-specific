@@ -1,7 +1,12 @@
 # modules/user_resources/main.tf
+locals {
+  # Sanitize names for GCP resources
+  sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
+}
+
 # CREATE USER SERVICE ACCOUNT
 resource "google_service_account" "user_sa" {
-  account_id   = "${substr(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), 0, 26)}-sa"
+  account_id   = "${local.sanitized_name}-sa"
   display_name = "Service account for user ${var.user_id}"
   project      = var.project_id
 }

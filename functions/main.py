@@ -1,4 +1,3 @@
-# functions/main.py
 import os
 import json
 import subprocess
@@ -29,8 +28,8 @@ def setup_terraform(version="1.5.7"):
         url = f"https://releases.hashicorp.com/terraform/{version}/terraform_{version}_linux_amd64.zip"
         subprocess.run(f"curl -o /tmp/terraform/terraform.zip {url}", shell=True, check=True)
         
-        # Unzip and make executable
-        subprocess.run("unzip /tmp/terraform/terraform.zip -d /tmp/terraform", shell=True, check=True)
+        # Unzip and make executable (with -o flag to force overwrite)
+        subprocess.run("unzip -o /tmp/terraform/terraform.zip -d /tmp/terraform", shell=True, check=True)
         subprocess.run("chmod +x /tmp/terraform/terraform", shell=True, check=True)
         
         # Add to PATH
@@ -71,7 +70,7 @@ def setup_terraform_workspace(user_id):
         logger.error(f"Error setting up workspace: {str(e)}", exc_info=True)
         raise
 
-def run_terraform_command(command, work_dir, user_id, project_id="semantc-sandbox", region="us-central1"):
+def run_terraform_command(command, work_dir, user_id, connector_type, project_id="semantc-sandbox", region="us-central1"):
     """Execute terraform command with proper environment and variables."""
     logger.info(f"Running Terraform command: {command}")
     logger.info(f"Working directory: {work_dir}")
@@ -82,6 +81,7 @@ def run_terraform_command(command, work_dir, user_id, project_id="semantc-sandbo
     env["TF_VAR_user_id"] = user_id
     env["TF_VAR_project_id"] = project_id
     env["TF_VAR_region"] = region
+    env["TF_VAR_connector_type"] = connector_type
     
     logger.debug(f"Environment variables set: {json.dumps({k: env[k] for k in env if 'TF_VAR' in k or 'GOOGLE_PROJECT' in k}, indent=2)}")
     
@@ -131,7 +131,10 @@ def provision_connector(request: Request):
             return (error_msg, 400)
         
         user_id = request_json['userId']
-        logger.info(f"Received request for user: {user_id}")
+        # Get specific connector type if provided
+        connector_type = request_json.get('connectorType')
+        
+        logger.info(f"Received request for user: {user_id}, connector: {connector_type}")
     except Exception as e:
         error_msg = f"Error parsing request: {str(e)}"
         logger.error(error_msg)
@@ -154,16 +157,31 @@ def provision_connector(request: Request):
         connector_data = connector_doc.to_dict()
         logger.info(f"Retrieved connector data: {json.dumps(connector_data, indent=2, default=str)}")
         
-        # Verify if there are active connectors
-        active_connectors = {k: v for k, v in connector_data.items() 
-                             if isinstance(v, dict) and v.get('active', False)}
+        # If no specific connector provided, get the most recently updated one
+        if not connector_type:
+            active_connectors = {k: v for k, v in connector_data.items() 
+                               if isinstance(v, dict) and v.get('active', False)}
+            
+            if not active_connectors:
+                error_msg = f"No active connectors found for user {user_id}"
+                logger.warning(error_msg)
+                return (error_msg, 404)
+            
+            # Get most recently updated connector
+            connector_type = max(
+                active_connectors.items(),
+                key=lambda x: x[1].get('updatedAt', datetime.min)
+            )[0]
         
-        if not active_connectors:
-            error_msg = f"No active connectors found for user {user_id}"
+        # Verify the specified connector exists and is active
+        if (connector_type not in connector_data or 
+            not isinstance(connector_data[connector_type], dict) or 
+            not connector_data[connector_type].get('active')):
+            error_msg = f"Connector {connector_type} not found or not active"
             logger.warning(error_msg)
             return (error_msg, 404)
-                
-        logger.info(f"Found active connectors: {list(active_connectors.keys())}")
+            
+        logger.info(f"Processing connector: {connector_type}")
         
         # Set up terraform workspace
         work_dir = setup_terraform_workspace(user_id)
@@ -174,7 +192,8 @@ def provision_connector(request: Request):
             init_output = run_terraform_command(
                 "terraform init -reconfigure",
                 work_dir,
-                user_id
+                user_id,
+                connector_type
             )
             logger.info("Terraform init complete")
             
@@ -182,7 +201,8 @@ def provision_connector(request: Request):
             plan_output = run_terraform_command(
                 "terraform plan -out=tfplan",
                 work_dir,
-                user_id
+                user_id,
+                connector_type
             )
             logger.info("Terraform plan complete")
             
@@ -190,7 +210,8 @@ def provision_connector(request: Request):
             apply_output = run_terraform_command(
                 "terraform apply -auto-approve tfplan",
                 work_dir,
-                user_id
+                user_id,
+                connector_type
             )
             logger.info("Terraform apply complete")
             
@@ -199,7 +220,12 @@ def provision_connector(request: Request):
             # Update Firestore with provisioning status
             status_update = {
                 'lastProvisioned': datetime.utcnow(),
-                'provisioningStatus': 'completed'
+                'provisioningStatus': 'completed',
+                connector_type: {
+                    **connector_data[connector_type],
+                    'resourcesProvisioned': True,
+                    'lastProvisioned': datetime.utcnow()
+                }
             }
             connector_ref.set(status_update, merge=True)
             logger.info("Updated Firestore with success status")

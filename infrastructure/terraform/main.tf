@@ -20,13 +20,13 @@ terraform {
 }
 
 provider "google" {
-  project     = var.project_id
-  region      = var.region
+  project = var.project_id
+  region  = var.region
 }
 
 provider "google-beta" {
-  project     = var.project_id
-  region      = var.region
+  project = var.project_id
+  region  = var.region
 }
 
 # CREATE BASE USER RESOURCES (SERVICE ACCOUNT, IAM)
@@ -37,7 +37,7 @@ module "user_resources" {
   region     = var.region
 }
 
-# CREATE CONNECTOR-SPECIFIC RESOURCES FOR EACH ACTIVE CONNECTOR
+# CREATE CONNECTOR-SPECIFIC RESOURCES
 module "connector_resources" {
   source = "./modules/connector_resources"
   
@@ -45,8 +45,7 @@ module "connector_resources" {
   user_id    = var.user_id
   region     = var.region
   
-  connector_type = "xero"
-
+  connector_type = var.connector_type  # Comes from TF_VAR_connector_type
   user_service_account = module.user_resources.service_account_email
   
   depends_on = [module.user_resources]

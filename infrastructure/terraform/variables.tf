@@ -14,3 +14,8 @@ variable "user_id" {
   description = "firebase auth user id"
   type        = string
 }
+
+variable "connector_type" {
+  description = "type of connector (e.g., xero, shopify)"
+  type        = string
+}
