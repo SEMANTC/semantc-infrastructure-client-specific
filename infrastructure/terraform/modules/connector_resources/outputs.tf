@@ -13,3 +13,13 @@ output "transformation_job_name" {
   description = "name of the transformation cloud run job"
   value       = google_cloud_run_v2_job.transformation_job.name
 }
+
+output "ingestion_image" {
+  description = "full path to the ingestion image"
+  value       = local.ingestion_image
+}
+
+output "transformation_image" {
+  description = "full path to the transformation image"
+  value       = local.transformation_image
+}

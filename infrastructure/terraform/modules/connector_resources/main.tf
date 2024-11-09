@@ -2,6 +2,9 @@
 locals {
   # sanitize names for GCP resources
   sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
+  # create image names based on connector type
+  ingestion_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
+  transformation_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
 }
 
 # CREATE STORAGE BUCKET FOR CONNECTOR DATA
@@ -31,7 +34,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   template {
     template {
       containers {
-        image = var.ingestion_image
+        image = local.ingestion_image
 
         env {
           name  = "USER_ID"
@@ -69,7 +72,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   template {
     template {
       containers {
-        image = var.transformation_image
+        image = local.transformation_image
 
         env {
           name  = "USER_ID"

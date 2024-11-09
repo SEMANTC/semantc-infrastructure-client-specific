@@ -1,6 +1,6 @@
-# 🌐 Multi-Connector Infrastructure
+# 🌐 Multi-Connector Infrastructure with Cloud Function Terraform Provisioning
 
-This project automates the provisioning of GCP resources for user integrations (Xero, Shopify, etc.) using Terraform. Resources are created automatically when a new connection is established through the web application.
+This project automates the provisioning of GCP resources for user integrations (Xero, Shopify, etc.) using Terraform executed via Cloud Functions. Resources are created automatically when a new connection is established.
 
 ## 📋 Table of Contents
 
@@ -16,217 +16,193 @@ This project automates the provisioning of GCP resources for user integrations (
 
 ## ✨ Introduction
 
-This infrastructure project automates the creation and management of GCP resources for user integrations. It uses Terraform to provision resources based on Firestore documents created by the web application when users connect to services like Xero or Shopify.
+This infrastructure project automates the creation and management of GCP resources for user integrations. It uses a Cloud Function to execute Terraform configurations that provision resources based on HTTP triggers, managing resources like Cloud Run jobs, Storage buckets, and BigQuery access.
 
 ## 🎯 Goals
 
-- Automatic resource provisioning triggered by user connections
-- Secure credential management using Firestore
-- Isolated resources per user
-- Scalable multi-connector support
-- Cost-effective shared infrastructure where appropriate
+- HTTP-triggered resource provisioning
+- Secure resource isolation per user
+- Automated Cloud Run job management
+- BigQuery access control per user
+- Scalable multi-connector architecture
 
 ## 🏗️ Architecture Overview
 
 ```mermaid
 graph TD
-    A[Web App] -->|User Authenticates| B[Firebase Auth]
-    A -->|Creates Connection| C[Firestore Documents]
-    C -->|Triggers| D[Cloud Function]
-    D -->|Executes| E[Terraform]
-    E -->|Creates| F[GCP Resources]
-    F1[User Service Account] --> F
-    F2[Storage Buckets] --> F
-    F3[Cloud Run Jobs] --> F
-    F4[BigQuery Access] --> F
+    A[HTTP Trigger] -->|POST Request| B[Cloud Function]
+    B -->|Downloads| C[Terraform Configs from GCS]
+    B -->|Executes| D[Terraform]
+    D -->|Creates| E[GCP Resources]
+    E1[Cloud Run Jobs] --> E
+    E2[Storage Buckets] --> E
+    E3[BigQuery Views] --> E
+    E4[Service Accounts] --> E
 ```
-
-Key workflow:
-1. User connects via web app
-2. Firestore documents created:
-   - `/users/{userId}/integrations/connectors`
-   - `/users/{userId}/integrations/credentials`
-3. Cloud Function triggered
-4. Terraform provisions resources
 
 ## ⚙️ Key Components
 
-### Firestore Structure
+### Project Structure
 ```
-/users/{userId}/
-├── integrations/
-    ├── connectors/
-    │   ├── active: boolean
-    │   ├── updatedAt: timestamp
-    │   └── {connector}:
-    │       ├── active: boolean
-    │       ├── tenantId: string
-    │       ├── tenantName: string
-    │       └── updatedAt: timestamp
-    └── credentials/
-        └── {connector}:
-            ├── accessToken: string
-            ├── refreshToken: string
-            ├── expiresAt: number
-            ├── tokenType: string
-            ├── scope: string
-            └── lastUpdated: timestamp
+├── functions/
+│   ├── main.py              # Cloud Function implementation
+│   └── requirements.txt     # Python dependencies
+│
+└── infrastructure/
+    └── terraform/
+        ├── main.tf          # Main Terraform configuration
+        ├── outputs.tf       # Root outputs
+        ├── variables.tf     # Root variables
+        └── modules/
+            ├── user_resources/
+            │   ├── main.tf
+            │   ├── outputs.tf
+            │   └── variables.tf
+            ├── connector_resources/
+            │   ├── main.tf
+            │   ├── outputs.tf
+            │   └── variables.tf
+            └── bigquery_access/
+                ├── main.tf
+                ├── outputs.tf
+                └── variables.tf
 ```
 
 ### Resource Naming Conventions
-- Service Account: `{userId}-sa`
-- Storage Bucket: `{userId}-{connector}`
-- Cloud Run Jobs: 
-  - `{userId}-{connector}-ingestion`
-  - `{userId}-{connector}-transformation`
-- BigQuery Tables: `{userId}__{connector}__{entity}`
+- Cloud Run Jobs: `{sanitized-user-id}-{connector-type}-{ingestion|transformation}`
+- Storage Buckets: `{sanitized-user-id}-{connector-type}`
+- BigQuery Views Dataset: `{sanitized-user-id}_views`
+- Container Images: `gcr.io/PROJECT_ID/{connector-type}-{ingestion|transformation}:latest`
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-- GCP Project
-- Enabled APIs:
-  ```bash
-  gcloud services enable \
-    cloudfunction.googleapis.com \
-    cloudbuild.googleapis.com \
-    run.googleapis.com \
-    bigquery.googleapis.com \
-    storage.googleapis.com \
-    firestore.googleapis.com \
-    cloudscheduler.googleapis.com
-  ```
-
-### Initial Setup
-
-1. **Create Service Account**
+### 1. Enable Required APIs
 ```bash
-export PROJECT_ID="your-project-id"
+gcloud services enable \
+    cloudfunctions.googleapis.com \
+    run.googleapis.com \
+    cloudbuild.googleapis.com \
+    artifactregistry.googleapis.com \
+    firestore.googleapis.com \
+    cloudscheduler.googleapis.com \
+    containerregistry.googleapis.com \
+    cloudbilling.googleapis.com \
+    iam.googleapis.com \
+    cloudresourcemanager.googleapis.com \
+    bigquery.googleapis.com \
+    storage-api.googleapis.com \
+    storage-component.googleapis.com
+```
 
-# Create Terraform service account
+### 2. Create and Configure Service Account
+```bash
+# Create service account
+export PROJECT_ID=$(gcloud config get-value project)
+export SA_EMAIL="terraform-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+
 gcloud iam service-accounts create terraform-sa \
     --display-name="Terraform Service Account"
 
-# Assign necessary roles
-for role in storage.admin cloudscheduler.admin run.admin bigquery.dataEditor iam.serviceAccountCreator secretmanager.admin datastore.viewer
+# Grant required roles
+for role in bigquery.admin storage.admin iam.serviceAccountAdmin run.admin cloudscheduler.admin datastore.user artifactregistry.admin
 do
   gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:terraform-sa@$PROJECT_ID.iam.gserviceaccount.com" \
+    --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/$role"
 done
 
-# Create and download key
-gcloud iam service-accounts keys create terraform-sa-key.json \
-    --iam-account=terraform-sa@$PROJECT_ID.iam.gserviceaccount.com
+# Grant Cloud Run Service Agent permissions
+export PROJECT_NUMBER=$(gcloud projects describe $PROJECT_ID --format='value(projectNumber)')
+for role in artifactregistry.reader storage.objectViewer
+do
+  gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:service-${PROJECT_NUMBER}@serverless-robot-prod.iam.gserviceaccount.com" \
+    --role="roles/$role"
+done
 ```
 
-2. **Create Storage Bucket for Terraform State**
+### 3. Initialize Storage and Upload Terraform Files
 ```bash
-gsutil mb gs://terraform-state-$PROJECT_ID
+# Create and configure GCS bucket
+gsutil mb -l us-central1 gs://semantc-terraform-configs
+gsutil -m cp -r infrastructure/terraform/* gs://semantc-terraform-configs/
 ```
 
-3. **Deploy Cloud Function**
+### 4. Deploy Cloud Function
 ```bash
-# Create Cloud Function directory
-mkdir -p functions/provision-connector
-cd functions/provision-connector
-
-# Deploy function
 gcloud functions deploy provision-connector \
-    --runtime python39 \
-    --trigger-event providers/cloud.firestore/eventTypes/document.create \
-    --trigger-resource "projects/$PROJECT_ID/databases/(default)/documents/users/{userId}/integrations/connectors"
+    --gen2 \
+    --runtime=python39 \
+    --region=us-central1 \
+    --source=./functions \
+    --entry-point=provision_connector \
+    --service-account=terraform-sa@semantc-sandbox.iam.gserviceaccount.com \
+    --trigger-http \
+    --allow-unauthenticated \
+    --memory=2048MB \
+    --timeout=540s
 ```
 
 ## 🔧 Usage
 
-### Project Structure
-```
-.
-├── terraform/
-│   ├── main.tf              # Main configuration
-│   ├── variables.tf         # Variable definitions
-│   ├── outputs.tf          # Output definitions
-│   └── modules/
-│       ├── user_resources/  # User service account, IAM
-│       ├── connector_resources/  # Connector-specific resources
-│       └── bigquery_access/  # Table permissions
-├── functions/
-│   └── provision-connector/
-│       ├── main.py          # Cloud Function code
-│       ├── requirements.txt
-│       └── terraform/       # Terraform files for function
-└── .gitignore
-```
-
-### Deployment Process
-
-1. **Initialize Terraform:**
+### Testing Deployment
 ```bash
-cd terraform
-terraform init
+# Test with specific connector type
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"qICP2YhF3IbcHfkK6vX2nwXQBhh2","connectorType":"xero"}' \
+  https://us-central1-semantc-sandbox.cloudfunctions.net/provision-connector
+
+# Monitor logs
+gcloud functions logs read provision-connector --region=us-central1
 ```
 
-2. **Test Configuration:**
+### Managing Resources
 ```bash
-terraform plan -var-file=example.tfvars
-```
+# List Cloud Run jobs
+gcloud run jobs list --region=us-central1
 
-3. **Monitor Deployments:**
-```bash
-# View Cloud Function logs
-gcloud functions logs read provision-connector
-
-# List resources
-gcloud run jobs list
-gsutil ls
-bq ls
+# Delete a job if needed
+gcloud run jobs delete JOB_NAME --region=us-central1 --quiet
 ```
 
 ## 🔒 Security
 
-- One service account per user
-- Least privilege access
-- Resources isolated by user ID
-- Credentials stored in Firestore
-- Table-level access control in BigQuery
+- Service account with minimal required permissions
+- Resource isolation per user
+- BigQuery access controlled via authorized views
+- Secure credential management
 
 ## ❓ Troubleshooting
 
 ### Common Issues
 
-1. **Permissions:**
+1. **Permission Denied**
 ```bash
-# Verify service account roles
+# Check service account roles
 gcloud projects get-iam-policy $PROJECT_ID \
     --flatten="bindings[].members" \
     --format='table(bindings.role)' \
-    --filter="bindings.members:terraform-sa"
+    --filter="bindings.members:$SA_EMAIL"
 ```
 
-2. **Cloud Function Logs:**
+2. **Cloud Run Job Issues**
 ```bash
-gcloud functions logs read provision-connector --limit=50
+# List jobs
+gcloud run jobs list --region=us-central1
+
+# Check job details
+gcloud run jobs describe JOB_NAME --region=us-central1
 ```
 
-3. **Resource Verification:**
+3. **Container Image Access**
 ```bash
-# List user's Cloud Run jobs
-gcloud run jobs list --filter="metadata.name ~ ^{userId}"
-
-# List user's buckets
-gsutil ls -p $PROJECT_ID
-
-# Check BigQuery permissions
-bq show --format=prettyjson raw_data
+# List available images
+gcloud container images list --repository=gcr.io/$PROJECT_ID
 ```
 
 ## 📚 Resources
 
-- [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
 - [Cloud Functions Documentation](https://cloud.google.com/functions/docs)
-- [Firestore Documentation](https://cloud.google.com/firestore/docs)
-- [Cloud Run Jobs](https://cloud.google.com/run/docs/create-jobs)
-
-Would you like me to expand on any section or add additional information?
+- [Cloud Run Jobs Documentation](https://cloud.google.com/run/docs/create-jobs)
+- [Terraform GCP Provider](https://registry.terraform.io/providers/hashicorp/google/latest/docs)
