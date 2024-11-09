@@ -1,4 +1,4 @@
-# modules/connector_resources/variables.tf
+# infrastructure/terraform/modules/connector_resources/variables.tf
 variable "project_id" {
   description = "gcp project id"
   type        = string

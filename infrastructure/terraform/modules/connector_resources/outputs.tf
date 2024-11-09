@@ -1,4 +1,4 @@
-# modules/connector_resources/outputs.tf
+# infrastructure/terraform/modules/connector_resources/outputs.tf
 output "bucket_name" {
   description = "name of the connector storage bucket"
   value       = google_storage_bucket.connector_bucket.name

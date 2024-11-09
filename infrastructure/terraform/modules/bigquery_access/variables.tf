@@ -1,4 +1,4 @@
-# modules/bigquery_access/variables.tf
+# infrastructure/terraform/modules/bigquery_access/variables.tf
 variable "project_id" {
   description = "gcp project id"
   type        = string

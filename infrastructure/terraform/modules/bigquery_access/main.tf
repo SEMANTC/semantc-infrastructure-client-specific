@@ -1,4 +1,4 @@
-# modules/bigquery_access/main.tf
+# infrastructure/terraform/modules/bigquery_access/main.tf
 # GRANT ACCESS TO RAW DATASET TABLES
 resource "google_bigquery_dataset_iam_member" "raw_data_access" {
   project    = var.project_id
