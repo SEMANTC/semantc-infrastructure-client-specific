@@ -1,6 +1,6 @@
 # infrastructure/terraform/modules/user_resources/main.tf
 locals {
-  # Sanitize names for GCP resources
+  # sanitize names for GCP resources
   sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
 }
 

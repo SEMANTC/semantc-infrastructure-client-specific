@@ -1,6 +1,6 @@
 # infrastructure/terraform/modules/connector_resources/main.tf
 locals {
-  # Sanitize names for GCP resources
+  # sanitize names for GCP resources
   sanitized_name = substr(replace(lower(replace(var.user_id, "/[^a-z0-9-]/", "")), "/-+/", "-"), 0, 28)
 }
 
@@ -23,9 +23,10 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
 
 # CREATE CLOUD RUN INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  name     = "${local.sanitized_name}-${lower(var.connector_type)}-ingestion"
-  location = var.region
-  project  = var.project_id
+  name                = "${local.sanitized_name}-${lower(var.connector_type)}-ingestion"
+  location            = var.region
+  project             = var.project_id
+  deletion_protection = false
 
   template {
     template {
@@ -60,9 +61,10 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
 # CREATE CLOUD RUN TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  name     = "${local.sanitized_name}-${lower(var.connector_type)}-transformation"
-  location = var.region
-  project  = var.project_id
+  name                = "${local.sanitized_name}-${lower(var.connector_type)}-transformation"
+  location            = var.region
+  project             = var.project_id
+  deletion_protection = false
 
   template {
     template {

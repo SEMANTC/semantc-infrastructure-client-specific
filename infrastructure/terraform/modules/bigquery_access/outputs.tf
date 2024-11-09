@@ -1,10 +1,15 @@
 # infrastructure/terraform/modules/bigquery_access/outputs.tf
-output "raw_dataset_access" {
-  description = "iam binding for raw dataset access"
-  value       = google_bigquery_dataset_iam_member.raw_data_access.role
+output "user_views_dataset" {
+  description = "the id of the user's views dataset"
+  value       = google_bigquery_dataset.user_views.dataset_id
 }
 
-output "transformed_dataset_access" {
-  description = "iam binding for transformed dataset access"
-  value       = google_bigquery_dataset_iam_member.transformed_data_access.role
+output "raw_data_view_id" {
+  description = "the id of the user's raw data view"
+  value       = google_bigquery_table.raw_data_view.table_id
+}
+
+output "transformed_data_view_id" {
+  description = "the id of the user's transformed data view"
+  value       = google_bigquery_table.transformed_data_view.table_id
 }
