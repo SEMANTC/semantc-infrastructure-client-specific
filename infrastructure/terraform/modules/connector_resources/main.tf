@@ -10,8 +10,14 @@ locals {
   transformation_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
 }
 
+# CHECK IF BUCKET EXISTS
+data "google_storage_bucket" "existing_bucket" {
+  name = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
+}
+
 # CREATE STORAGE BUCKET FOR CONNECTOR DATA
 resource "google_storage_bucket" "connector_bucket" {
+  count         = data.google_storage_bucket.existing_bucket == null ? 1 : 0
   name          = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
   location      = var.region
   project       = var.project_id
@@ -20,15 +26,30 @@ resource "google_storage_bucket" "connector_bucket" {
   uniform_bucket_level_access = true
 }
 
+locals {
+  bucket_name = try(
+    data.google_storage_bucket.existing_bucket.name,
+    google_storage_bucket.connector_bucket[0].name
+  )
+}
+
 # GRANT BUCKET ACCESS
 resource "google_storage_bucket_iam_member" "bucket_access" {
-  bucket = google_storage_bucket.connector_bucket.name
+  bucket = local.bucket_name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${var.user_service_account}"
 }
 
+# CHECK IF INGESTION JOB EXISTS
+data "google_cloud_run_v2_job" "existing_ingestion" {
+  name     = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
+  location = var.region
+  project  = var.project_id
+}
+
 # CREATE CLOUD RUN INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
+  count               = data.google_cloud_run_v2_job.existing_ingestion == null ? 1 : 0
   name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
   location            = var.region
   project             = var.project_id
@@ -56,7 +77,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
         env {
           name  = "BUCKET_NAME"
-          value = google_storage_bucket.connector_bucket.name
+          value = local.bucket_name
         }
       }
 
@@ -69,8 +90,16 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
+# CHECK IF TRANSFORMATION JOB EXISTS
+data "google_cloud_run_v2_job" "existing_transformation" {
+  name     = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
+  location = var.region
+  project  = var.project_id
+}
+
 # CREATE CLOUD RUN TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
+  count               = data.google_cloud_run_v2_job.existing_transformation == null ? 1 : 0
   name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
   location            = var.region
   project             = var.project_id
@@ -106,6 +135,13 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   }
 }
 
+locals {
+  ingestion_job_name = try(
+    data.google_cloud_run_v2_job.existing_ingestion.name,
+    google_cloud_run_v2_job.ingestion_job[0].name
+  )
+}
+
 # CREATE CLOUD SCHEDULER FOR INGESTION
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
   name             = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
@@ -118,7 +154,7 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
 
   http_target {
     http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${google_cloud_run_v2_job.ingestion_job.name}:run"
+    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${local.ingestion_job_name}:run"
 
     oauth_token {
       service_account_email = var.user_service_account

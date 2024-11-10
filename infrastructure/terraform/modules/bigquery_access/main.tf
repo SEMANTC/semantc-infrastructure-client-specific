@@ -4,8 +4,15 @@ module "user_id" {
   user_id = var.user_id
 }
 
+# CHECK IF DATASET EXISTS FIRST
+data "google_bigquery_dataset" "existing_views" {
+  dataset_id = "${module.user_id.bigquery_name}_views"
+  project    = var.project_id
+}
+
 # CREATE USER-SPECIFIC AUTHORIZED VIEWS
 resource "google_bigquery_dataset" "user_views" {
+  count         = data.google_bigquery_dataset.existing_views == null ? 1 : 0
   dataset_id    = "${module.user_id.bigquery_name}_views"
   friendly_name = "views for user ${var.user_id}"
   description   = "contains authorized views to user's tables"
@@ -13,9 +20,16 @@ resource "google_bigquery_dataset" "user_views" {
   project       = var.project_id
 }
 
+locals {
+  dataset_id = try(
+    data.google_bigquery_dataset.existing_views.dataset_id,
+    google_bigquery_dataset.user_views[0].dataset_id
+  )
+}
+
 # CREATE VIEW FOR RAW DATA
 resource "google_bigquery_table" "raw_data_view" {
-  dataset_id = google_bigquery_dataset.user_views.dataset_id
+  dataset_id = local.dataset_id
   table_id   = "raw_data_view"
   project    = var.project_id
   deletion_protection = false
@@ -32,11 +46,15 @@ resource "google_bigquery_table" "raw_data_view" {
     EOF
     use_legacy_sql = false
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # CREATE VIEW FOR TRANSFORMED DATA
 resource "google_bigquery_table" "transformed_data_view" {
-  dataset_id = google_bigquery_dataset.user_views.dataset_id
+  dataset_id = local.dataset_id
   table_id   = "transformed_data_view"
   project    = var.project_id
   deletion_protection = false
@@ -53,11 +71,15 @@ resource "google_bigquery_table" "transformed_data_view" {
     EOF
     use_legacy_sql = false
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # GRANT USER'S SERVICE ACCOUNT ACCESS TO THE VIEWS ONLY
 resource "google_bigquery_dataset_iam_member" "user_views_access" {
-  dataset_id = google_bigquery_dataset.user_views.dataset_id
+  dataset_id = local.dataset_id
   project    = var.project_id
   role       = "roles/bigquery.dataViewer"
   member     = "serviceAccount:${var.service_account_email}"

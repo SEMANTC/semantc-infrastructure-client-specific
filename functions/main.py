@@ -19,20 +19,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def cleanup_service_account(project_id, service_account_email):
-    """Clean up service account using gcloud command."""
-    try:
-        cmd = f"gcloud iam service-accounts delete {service_account_email} --project={project_id} --quiet"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            return True
-        else:
-            logger.error(f"Error deleting service account: {result.stderr}")
-            return False
-    except Exception as e:
-        logger.error(f"Exception during service account cleanup: {str(e)}")
-        return False
-
 def setup_terraform(version="1.5.7"):
     """Install Terraform in the function environment."""
     logger.info(f"=== STARTING TERRAFORM SETUP ===")
@@ -46,13 +32,6 @@ def setup_terraform(version="1.5.7"):
         url = f"https://releases.hashicorp.com/terraform/{version}/terraform_{version}_linux_amd64.zip"
         logger.info(f"Downloading Terraform from: {url}")
         subprocess.run(f"curl -o /tmp/terraform/terraform.zip {url}", shell=True, check=True, capture_output=True, text=True)
-        
-        # Install gcloud CLI if needed for service account management
-        subprocess.run("curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-438.0.0-linux-x86_64.tar.gz", 
-                      shell=True, check=True, capture_output=True, text=True)
-        subprocess.run("tar -xf google-cloud-cli-438.0.0-linux-x86_64.tar.gz", shell=True, check=True)
-        subprocess.run("./google-cloud-sdk/install.sh --quiet", shell=True, check=True)
-        os.environ['PATH'] = f"{os.getcwd()}/google-cloud-sdk/bin:{os.environ['PATH']}"
         
         # Unzip and make executable
         logger.info("Extracting Terraform binary")
@@ -234,10 +213,9 @@ def provision_connector(request: Request):
         
         user_id = request_json['userId']
         connector_type = request_json.get('connectorType', 'xero')  # Default to xero
-        force = request_json.get('force', False)  # Add force parameter
         project_id = os.environ.get('GOOGLE_PROJECT', 'semantc-sandbox')
         
-        logger.info(f"Processing request for user: {user_id}, connector: {connector_type}, force: {force}")
+        logger.info(f"Processing request for user: {user_id}, connector: {connector_type}")
     except Exception as e:
         error_msg = f"Error parsing request: {str(e)}"
         logger.error(error_msg)
@@ -270,19 +248,9 @@ def provision_connector(request: Request):
             connector_ref.set(status_update, merge=True)
             logger.info("Updated Firestore with in_progress status")
             
-            # Setup Terraform and gcloud
-            logger.info("Setting up Terraform and gcloud...")
+            # Setup Terraform
+            logger.info("Setting up Terraform...")
             setup_terraform()
-            
-            # Handle force cleanup if specified
-            if force:
-                # Calculate service account email
-                sa_email = f"usr-{user_id[:12]}-sa@{project_id}.iam.gserviceaccount.com"
-                logger.info(f"Force cleanup requested. Attempting to delete service account: {sa_email}")
-                if cleanup_service_account(project_id, sa_email):
-                    logger.info("Successfully cleaned up existing service account")
-                else:
-                    logger.warning("Failed to clean up service account (might not exist)")
             
             # Set up terraform workspace
             logger.info("Setting up Terraform workspace...")
@@ -300,37 +268,10 @@ def provision_connector(request: Request):
                 )
                 logger.info("Terraform init completed successfully")
                 
-                # Import existing resources if they exist and it's not a force operation
-                if not force:
-                    try:
-                        sa_email = f"usr-{user_id[:12]}-sa@{project_id}.iam.gserviceaccount.com"
-                        import_cmd = f"terraform import 'module.user_resources.google_service_account.user_sa' 'projects/{project_id}/serviceAccounts/{sa_email}'"
-                        logger.info(f"Attempting to import service account with command: {import_cmd}")
-                        
-                        try:
-                            import_output = run_terraform_command(
-                                import_cmd,
-                                work_dir,
-                                user_id,
-                                connector_type
-                            )
-                            logger.info("Successfully imported existing service account")
-                        except Exception as e:
-                            if "Cannot import non-existent remote object" in str(e):
-                                logger.info("Service account doesn't exist yet, continuing with creation")
-                            else:
-                                logger.warning(f"Import failed (this is ok for new resources): {str(e)}")
-                    except Exception as import_error:
-                        logger.warning(f"Import attempt failed (this is ok for new resources): {str(import_error)}")
-                
                 # Run terraform plan
-                plan_cmd = "terraform plan -no-color -out=tfplan"
-                if force:
-                    plan_cmd += " -refresh=false"  # Skip refresh when forcing recreation
-                
                 logger.info("Running terraform plan...")
                 plan_output = run_terraform_command(
-                    plan_cmd,
+                    "terraform plan -no-color -out=tfplan",
                     work_dir,
                     user_id,
                     connector_type
@@ -375,19 +316,6 @@ def provision_connector(request: Request):
         except Exception as e:
             error_message = f"Error in terraform execution: {str(e)}"
             logger.error(error_message, exc_info=True)
-            
-            try:
-                if 'connector_ref' in locals():
-                    status_update = {
-                        'lastProvisioned': datetime.utcnow(),
-                        'provisioningStatus': 'failed',
-                        'provisioningError': str(e)
-                    }
-                    connector_ref.set(status_update, merge=True)
-                    logger.info("Updated Firestore with error status")
-            except Exception as update_error:
-                logger.error(f"Error updating status in Firestore: {str(update_error)}")
-            
             raise
             
     except Exception as e:
