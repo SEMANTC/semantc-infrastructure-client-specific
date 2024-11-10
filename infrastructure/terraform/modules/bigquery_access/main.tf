@@ -8,16 +8,8 @@ locals {
   dataset_id = "${module.user_id.bigquery_name}_views"
 }
 
-# Try to get the dataset first
-data "google_bigquery_dataset" "existing_views" {
-  count      = 0  # This will skip the data source but allow us to reference it
-  dataset_id = local.dataset_id
-  project    = var.project_id
-}
-
-# Create only if it doesn't exist
+# CREATE THE DATASET
 resource "google_bigquery_dataset" "user_views" {
-  count         = 1  # Always try to create, will fail if exists
   dataset_id    = local.dataset_id
   friendly_name = "views for user ${var.user_id}"
   description   = "contains authorized views to user's tables"
@@ -32,9 +24,9 @@ resource "google_bigquery_dataset" "user_views" {
 
 # CREATE VIEW FOR RAW DATA
 resource "google_bigquery_table" "raw_data_view" {
-  dataset_id = local.dataset_id
-  table_id   = "raw_data_view"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.user_views.dataset_id
+  table_id            = "raw_data_view"
+  project             = var.project_id
   deletion_protection = false
 
   view {
@@ -54,13 +46,15 @@ resource "google_bigquery_table" "raw_data_view" {
     ignore_changes = [view[0].query]
     prevent_destroy = true
   }
+
+  depends_on = [google_bigquery_dataset.user_views]
 }
 
 # CREATE VIEW FOR TRANSFORMED DATA
 resource "google_bigquery_table" "transformed_data_view" {
-  dataset_id = local.dataset_id
-  table_id   = "transformed_data_view"
-  project    = var.project_id
+  dataset_id          = google_bigquery_dataset.user_views.dataset_id
+  table_id            = "transformed_data_view"
+  project             = var.project_id
   deletion_protection = false
 
   view {
@@ -80,14 +74,18 @@ resource "google_bigquery_table" "transformed_data_view" {
     ignore_changes = [view[0].query]
     prevent_destroy = true
   }
+
+  depends_on = [google_bigquery_dataset.user_views]
 }
 
 # GRANT USER'S SERVICE ACCOUNT ACCESS TO THE VIEWS ONLY
 resource "google_bigquery_dataset_iam_member" "user_views_access" {
-  dataset_id = local.dataset_id
+  dataset_id = google_bigquery_dataset.user_views.dataset_id
   project    = var.project_id
   role       = "roles/bigquery.dataViewer"
   member     = "serviceAccount:${var.service_account_email}"
+
+  depends_on = [google_bigquery_dataset.user_views]
 }
 
 # GRANT ACCESS TO SOURCE DATASETS

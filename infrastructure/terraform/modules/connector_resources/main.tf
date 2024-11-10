@@ -13,18 +13,13 @@ locals {
   scheduler_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
 }
 
-# TRY TO GET BUCKET
-data "google_storage_bucket" "existing_bucket" {
-  count = 0  # Skip the data source
-  name  = local.bucket_name
-}
-
 # CREATE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
   force_destroy = true
+
   uniform_bucket_level_access = true
 
   lifecycle {
@@ -35,17 +30,11 @@ resource "google_storage_bucket" "connector_bucket" {
 
 # GRANT BUCKET ACCESS
 resource "google_storage_bucket_iam_member" "bucket_access" {
-  bucket = local.bucket_name
+  bucket = google_storage_bucket.connector_bucket.name
   role   = "roles/storage.objectViewer"
   member = "serviceAccount:${var.user_service_account}"
-}
 
-# TRY TO GET EXISTING INGESTION JOB
-data "google_cloud_run_v2_job" "existing_ingestion" {
-  count    = 0  # Skip the data source
-  name     = local.ingestion_job_name
-  location = var.region
-  project  = var.project_id
+  depends_on = [google_storage_bucket.connector_bucket]
 }
 
 # CREATE INGESTION JOB
@@ -89,14 +78,6 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
     ignore_changes = all
     prevent_destroy = true
   }
-}
-
-# TRY TO GET EXISTING TRANSFORMATION JOB
-data "google_cloud_run_v2_job" "existing_transformation" {
-  count    = 0  # Skip the data source
-  name     = local.transformation_job_name
-  location = var.region
-  project  = var.project_id
 }
 
 # CREATE TRANSFORMATION JOB
@@ -160,4 +141,6 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
     ignore_changes = all
     prevent_destroy = true
   }
+
+  depends_on = [google_cloud_run_v2_job.ingestion_job]
 }
