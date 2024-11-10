@@ -40,7 +40,7 @@ module "connector_resources" {
   user_id    = var.user_id
   region     = var.region
   
-  connector_type = var.connector_type  # Comes from TF_VAR_connector_type
+  connector_type = var.connector_type
   user_service_account = module.user_resources.service_account_email
   
   depends_on = [module.user_resources]

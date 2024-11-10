@@ -6,7 +6,7 @@ module "user_id" {
 
 # CREATE USER SERVICE ACCOUNT
 resource "google_service_account" "user_sa" {
-  account_id   = "${module.user_id.sanitized_name}-sa"
+  account_id   = "${module.user_id.gcp_name}-sa"
   display_name = "Service account for user ${var.user_id}"
   project      = var.project_id
 }

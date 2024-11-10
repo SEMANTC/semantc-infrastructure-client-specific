@@ -1,4 +1,4 @@
-# infrastructure/terraform/modules/bigquery_access/main.tflocals {
+# infrastructure/terraform/modules/bigquery_access/main.tf
 module "user_id" {
   source  = "../user_id_helper"
   user_id = var.user_id

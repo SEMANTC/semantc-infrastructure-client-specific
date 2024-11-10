@@ -1,3 +1,4 @@
+# infrastructure/terraform/modules/connector_resources/main.tf
 module "user_id" {
   source  = "../user_id_helper"
   user_id = var.user_id
@@ -11,7 +12,7 @@ locals {
 
 # CREATE STORAGE BUCKET FOR CONNECTOR DATA
 resource "google_storage_bucket" "connector_bucket" {
-  name          = "${module.user_id.sanitized_name}-${lower(var.connector_type)}"
+  name          = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
   location      = var.region
   project       = var.project_id
   force_destroy = true
@@ -28,7 +29,7 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
 
 # CREATE CLOUD RUN INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  name                = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-ingestion"
+  name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -70,7 +71,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
 # CREATE CLOUD RUN TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  name                = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-transformation"
+  name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -107,7 +108,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
 
 # CREATE CLOUD SCHEDULER FOR INGESTION
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = "${module.user_id.sanitized_name}-${lower(var.connector_type)}-scheduler"
+  name             = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
   description      = "Triggers the ${var.connector_type} ingestion job"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"

@@ -1,3 +1,4 @@
+# infrastructure/terraform/modules/user_id_helper
 # HELPER MODULE TO ENSURE CONSISTENT USER ID HANDLING ACROSS ALL MODULES
 locals {
   # first generate md5 hash
