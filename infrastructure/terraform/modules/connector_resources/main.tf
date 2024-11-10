@@ -13,15 +13,14 @@ locals {
   scheduler_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
 }
 
-# Try to get bucket
+# TRY TO GET BUCKET
 data "google_storage_bucket" "existing_bucket" {
-  count = 0  # Skip the data source but allow reference
+  count = 0  # Skip the data source
   name  = local.bucket_name
 }
 
-# Create bucket
+# CREATE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
-  count         = 1  # Always try to create, will fail if exists
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
@@ -41,17 +40,16 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
   member = "serviceAccount:${var.user_service_account}"
 }
 
-# Try to get existing ingestion job
+# TRY TO GET EXISTING INGESTION JOB
 data "google_cloud_run_v2_job" "existing_ingestion" {
-  count    = 0  # Skip the data source but allow reference
+  count    = 0  # Skip the data source
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
 }
 
-# Create ingestion job
+# CREATE INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  count               = 1  # Always try to create, will fail if exists
   name                = local.ingestion_job_name
   location            = var.region
   project             = var.project_id
@@ -93,17 +91,16 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
-# Try to get existing transformation job
+# TRY TO GET EXISTING TRANSFORMATION JOB
 data "google_cloud_run_v2_job" "existing_transformation" {
-  count    = 0  # Skip the data source but allow reference
+  count    = 0  # Skip the data source
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
 }
 
-# Create transformation job
+# CREATE TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  count               = 1  # Always try to create, will fail if exists
   name                = local.transformation_job_name
   location            = var.region
   project             = var.project_id
@@ -142,7 +139,6 @@ resource "google_cloud_run_v2_job" "transformation_job" {
 
 # CREATE CLOUD SCHEDULER
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  count            = 1  # Always try to create, will fail if exists
   name             = local.scheduler_name
   description      = "Triggers the ${var.connector_type} ingestion job"
   schedule         = "0 */4 * * *"

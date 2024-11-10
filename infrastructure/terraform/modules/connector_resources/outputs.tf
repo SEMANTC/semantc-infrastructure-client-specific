@@ -11,8 +11,5 @@ output "ingestion_job_name" {
 
 output "transformation_job_name" {
   description = "name of the transformation cloud run job"
-  value       = try(
-    data.google_cloud_run_v2_job.existing_transformation.name,
-    google_cloud_run_v2_job.transformation_job[0].name
-  )
+  value       = local.transformation_job_name
 }

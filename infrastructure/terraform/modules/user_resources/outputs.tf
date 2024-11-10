@@ -6,5 +6,5 @@ output "service_account_email" {
 
 output "service_account_id" {
   description = "id of the user's service account"
-  value       = split("@", local.service_account_email)[0]
+  value       = local.service_account_id
 }
