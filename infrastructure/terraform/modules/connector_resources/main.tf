@@ -5,32 +5,33 @@ module "user_id" {
 }
 
 locals {
-  # create image names based on connector type
+  bucket_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
   ingestion_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
   transformation_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
+  ingestion_job_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
+  transformation_job_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
+  scheduler_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
 }
 
-# CHECK IF BUCKET EXISTS
+# Try to get bucket
 data "google_storage_bucket" "existing_bucket" {
-  name = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
+  count = 0  # Skip the data source but allow reference
+  name  = local.bucket_name
 }
 
-# CREATE STORAGE BUCKET FOR CONNECTOR DATA
+# Create bucket
 resource "google_storage_bucket" "connector_bucket" {
-  count         = data.google_storage_bucket.existing_bucket == null ? 1 : 0
-  name          = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
+  count         = 1  # Always try to create, will fail if exists
+  name          = local.bucket_name
   location      = var.region
   project       = var.project_id
   force_destroy = true
-
   uniform_bucket_level_access = true
-}
 
-locals {
-  bucket_name = try(
-    data.google_storage_bucket.existing_bucket.name,
-    google_storage_bucket.connector_bucket[0].name
-  )
+  lifecycle {
+    ignore_changes = all
+    prevent_destroy = true
+  }
 }
 
 # GRANT BUCKET ACCESS
@@ -40,17 +41,18 @@ resource "google_storage_bucket_iam_member" "bucket_access" {
   member = "serviceAccount:${var.user_service_account}"
 }
 
-# CHECK IF INGESTION JOB EXISTS
+# Try to get existing ingestion job
 data "google_cloud_run_v2_job" "existing_ingestion" {
-  name     = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
+  count    = 0  # Skip the data source but allow reference
+  name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
 }
 
-# CREATE CLOUD RUN INGESTION JOB
+# Create ingestion job
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  count               = data.google_cloud_run_v2_job.existing_ingestion == null ? 1 : 0
-  name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
+  count               = 1  # Always try to create, will fail if exists
+  name                = local.ingestion_job_name
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -59,7 +61,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
     template {
       containers {
         image = local.ingestion_image
-
+        
         env {
           name  = "USER_ID"
           value = var.user_id
@@ -86,21 +88,23 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 
   lifecycle {
-    create_before_destroy = true
+    ignore_changes = all
+    prevent_destroy = true
   }
 }
 
-# CHECK IF TRANSFORMATION JOB EXISTS
+# Try to get existing transformation job
 data "google_cloud_run_v2_job" "existing_transformation" {
-  name     = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
+  count    = 0  # Skip the data source but allow reference
+  name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
 }
 
-# CREATE CLOUD RUN TRANSFORMATION JOB
+# Create transformation job
 resource "google_cloud_run_v2_job" "transformation_job" {
-  count               = data.google_cloud_run_v2_job.existing_transformation == null ? 1 : 0
-  name                = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
+  count               = 1  # Always try to create, will fail if exists
+  name                = local.transformation_job_name
   location            = var.region
   project             = var.project_id
   deletion_protection = false
@@ -109,7 +113,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
     template {
       containers {
         image = local.transformation_image
-
+        
         env {
           name  = "USER_ID"
           value = var.user_id
@@ -131,20 +135,15 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   }
 
   lifecycle {
-    create_before_destroy = true
+    ignore_changes = all
+    prevent_destroy = true
   }
 }
 
-locals {
-  ingestion_job_name = try(
-    data.google_cloud_run_v2_job.existing_ingestion.name,
-    google_cloud_run_v2_job.ingestion_job[0].name
-  )
-}
-
-# CREATE CLOUD SCHEDULER FOR INGESTION
+# CREATE CLOUD SCHEDULER
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
+  count            = 1  # Always try to create, will fail if exists
+  name             = local.scheduler_name
   description      = "Triggers the ${var.connector_type} ingestion job"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"
@@ -159,5 +158,10 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
     oauth_token {
       service_account_email = var.user_service_account
     }
+  }
+
+  lifecycle {
+    ignore_changes = all
+    prevent_destroy = true
   }
 }
