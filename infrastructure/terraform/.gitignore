@@ -1,0 +1,82 @@
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files, which are likely to contain sensitive data
+*.tfvars
+*.tfvars.json
+
+# Ignore override files as they are usually used for local development
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# Ignore lock files
+.terraform.lock.hcl
+
+# Ignore service account keys
+*-sa-key.json
+*.json.key
+account.json
+credentials.json
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+
+# Local environment files
+.env
+.env.*
+
+# Workspace files
+*.workspace
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# Directory for temporary files
+tmp/
+temp/
+
+# Python virtual environment
+venv/
+.venv/
+env/
+.env/
+
+# Node modules (if using any Node.js tools)
+node_modules/
+
+# Compiled files
+*.tfstate
+*.tfstate.backup
+*.tfplan
