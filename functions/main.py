@@ -133,6 +133,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
     env["TF_VAR_project_id"] = project_id
     env["TF_VAR_region"] = region
     env["TF_VAR_connector_type"] = connector_type
+    env["TF_VAR_master_service_account"] = "master-sa@semantc-sandbox.iam.gserviceaccount.com"  # Added this line
     env["TF_LOG"] = "DEBUG"
     env["TF_IN_AUTOMATION"] = "true"
     env["TF_INPUT"] = "false"
