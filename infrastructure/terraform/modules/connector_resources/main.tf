@@ -1,43 +1,27 @@
+# Connector Resources Module - Creates connector-specific resources
+module "names" {
+  source  = "../user_id_helper"
+  user_id = var.user_id
+}
+
 locals {
-  user_id_lower = lower(var.user_id)
-  connector_type_lower = lower(var.connector_type)
+  # Clean the connector type to be GCP compliant
+  connector_type_clean = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
+  master_sa          = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
   
-  bucket_name            = "user-${local.user_id_lower}-${local.connector_type_lower}"
-  ingestion_job_name     = "user-${local.user_id_lower}-${local.connector_type_lower}-ingestion"
-  transformation_job_name = "user-${local.user_id_lower}-${local.connector_type_lower}-transform"
-  scheduler_name         = "user-${local.user_id_lower}-${local.connector_type_lower}-scheduler"
-  master_sa             = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
+  # Standardized resource names
+  bucket_name            = "${module.names.storage_prefix}-${local.connector_type_clean}"
+  ingestion_job_name     = "${module.names.job_prefix}-${local.connector_type_clean}-ing"
+  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-trn"
+  scheduler_name         = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 
-# Read existing bucket
-data "google_storage_bucket" "existing_bucket" {
-  count = 1
-  name  = local.bucket_name
-}
-
-# Read existing ingestion job
-data "google_cloud_run_v2_job" "existing_ingestion" {
-  count    = 1
-  name     = local.ingestion_job_name
-  location = var.region
-  project  = var.project_id
-}
-
-# Read existing transformation job
-data "google_cloud_run_v2_job" "existing_transform" {
-  count    = 1
-  name     = local.transformation_job_name
-  location = var.region
-  project  = var.project_id
-}
-
-# Kept for reference but not created
+# Create connector-specific storage bucket
 resource "google_storage_bucket" "connector_bucket" {
-  count         = 0
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
-  force_destroy = false
+  force_destroy = false  # Prevent accidental deletion
 
   uniform_bucket_level_access = true
 
@@ -52,9 +36,8 @@ resource "google_storage_bucket" "connector_bucket" {
   }
 }
 
-# Kept for reference but not created
+# Create ingestion job
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  count    = 0
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
@@ -62,7 +45,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   template {
     template {
       containers {
-        image = "gcr.io/${var.project_id}/${local.connector_type_lower}-ingestion:latest"
+        image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
         
         env {
           name  = "USER_ID"
@@ -86,7 +69,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
         env {
           name  = "RAW_DATASET"
-          value = "user_${local.user_id_lower}_raw"
+          value = module.names.raw_dataset_id
         }
       }
 
@@ -103,9 +86,8 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
-# Kept for reference but not created
+# Create transformation job
 resource "google_cloud_run_v2_job" "transformation_job" {
-  count    = 0
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
@@ -113,7 +95,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   template {
     template {
       containers {
-        image = "gcr.io/${var.project_id}/${local.connector_type_lower}-transformation:latest"
+        image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
         
         env {
           name  = "USER_ID"
@@ -132,12 +114,12 @@ resource "google_cloud_run_v2_job" "transformation_job" {
 
         env {
           name  = "RAW_DATASET"
-          value = "user_${local.user_id_lower}_raw"
+          value = module.names.raw_dataset_id
         }
 
         env {
           name  = "TRANSFORMED_DATASET"
-          value = "user_${local.user_id_lower}_transformed"
+          value = module.names.transformed_dataset_id
         }
       }
 
@@ -154,7 +136,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   }
 }
 
-# For scheduler, we'll use import or let it error and handle manually
+# Create Cloud Scheduler job
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
   name             = local.scheduler_name
   description      = "Triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
@@ -170,11 +152,15 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
 
     oauth_token {
       service_account_email = local.master_sa
+      scope                = "https://www.googleapis.com/auth/cloud-platform"
     }
   }
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all  # Ignore all changes since we can't data source it
+    ignore_changes = [
+      description,
+      attempt_deadline
+    ]
   }
 }
