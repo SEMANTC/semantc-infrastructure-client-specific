@@ -1,6 +1,4 @@
-# infrastructure/terraform/modules/connector_resources/main.tf
 locals {
-  # Ensure consistent lowercase for all resource names
   user_id_lower = lower(var.user_id)
   connector_type_lower = lower(var.connector_type)
   
@@ -11,8 +9,31 @@ locals {
   master_sa             = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
 }
 
-# Create connector-specific storage bucket
+# Read existing bucket
+data "google_storage_bucket" "existing_bucket" {
+  count = 1
+  name  = local.bucket_name
+}
+
+# Read existing ingestion job
+data "google_cloud_run_v2_job" "existing_ingestion" {
+  count    = 1
+  name     = local.ingestion_job_name
+  location = var.region
+  project  = var.project_id
+}
+
+# Read existing transformation job
+data "google_cloud_run_v2_job" "existing_transform" {
+  count    = 1
+  name     = local.transformation_job_name
+  location = var.region
+  project  = var.project_id
+}
+
+# Kept for reference but not created
 resource "google_storage_bucket" "connector_bucket" {
+  count         = 0
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
@@ -31,8 +52,9 @@ resource "google_storage_bucket" "connector_bucket" {
   }
 }
 
-# Create ingestion job
+# Kept for reference but not created
 resource "google_cloud_run_v2_job" "ingestion_job" {
+  count    = 0
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
@@ -44,12 +66,12 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
         
         env {
           name  = "USER_ID"
-          value = var.user_id  # Keep original case for env vars
+          value = var.user_id
         }
         
         env {
           name  = "CONNECTOR_TYPE"
-          value = var.connector_type  # Keep original case for env vars
+          value = var.connector_type
         }
 
         env {
@@ -81,8 +103,9 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
-# Create transformation job
+# Kept for reference but not created
 resource "google_cloud_run_v2_job" "transformation_job" {
+  count    = 0
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
@@ -94,12 +117,12 @@ resource "google_cloud_run_v2_job" "transformation_job" {
         
         env {
           name  = "USER_ID"
-          value = var.user_id  # Keep original case for env vars
+          value = var.user_id
         }
         
         env {
           name  = "CONNECTOR_TYPE"
-          value = var.connector_type  # Keep original case for env vars
+          value = var.connector_type
         }
 
         env {
@@ -131,7 +154,7 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   }
 }
 
-# Create Cloud Scheduler job
+# For scheduler, we'll use import or let it error and handle manually
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
   name             = local.scheduler_name
   description      = "Triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
@@ -152,11 +175,6 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = [
-      description,
-      attempt_deadline
-    ]
+    ignore_changes = all  # Ignore all changes since we can't data source it
   }
-
-  depends_on = [google_cloud_run_v2_job.ingestion_job]
 }

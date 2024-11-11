@@ -1,15 +1,15 @@
 # infrastructure/terraform/modules/user_resources/outputs.tf
 output "service_account_email" {
-  description = "email of the user's service account"
-  value       = google_service_account.user_sa.email
+  description = "Email of the user's service account"
+  value       = data.google_service_account.existing_sa[0].email
 }
 
 output "raw_dataset_id" {
-  description = "id of the raw dataset"
-  value       = google_bigquery_dataset.raw_data.dataset_id
+  description = "ID of the raw dataset"
+  value       = data.google_bigquery_dataset.raw_data[0].dataset_id
 }
 
 output "transformed_dataset_id" {
-  description = "id of the transformed dataset"
-  value       = google_bigquery_dataset.transformed_data.dataset_id
+  description = "ID of the transformed dataset"
+  value       = data.google_bigquery_dataset.transformed_data[0].dataset_id
 }

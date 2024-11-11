@@ -1,29 +1,51 @@
 # infrastructure/terraform/modules/user_resources/main.tf
 locals {
-  # Take first 8 chars of user ID and ensure lowercase
-  short_id = lower(substr(var.user_id, 0, 8))
+  # Ensure consistent lowercase for user id
   user_id_lower = lower(var.user_id)
   
-  # Format all resource names with lowercase user ID
-  service_account_id = "usr${local.short_id}"
+  # Service account and dataset names
+  service_account_id = "usr${lower(substr(local.user_id_lower, 0, 8))}"
   raw_dataset_id     = "user_${local.user_id_lower}_raw"
   transformed_dataset_id = "user_${local.user_id_lower}_transformed"
 }
 
-# Create service account - with lifecycle rule
+# Read existing service account
+data "google_service_account" "existing_sa" {
+  count        = 1
+  account_id   = local.service_account_id
+  project      = var.project_id
+}
+
+# Read existing raw dataset
+data "google_bigquery_dataset" "raw_data" {
+  count      = 1
+  dataset_id = local.raw_dataset_id
+  project    = var.project_id
+}
+
+# Read existing transformed dataset
+data "google_bigquery_dataset" "transformed_data" {
+  count      = 1
+  dataset_id = local.transformed_dataset_id
+  project    = var.project_id
+}
+
+# Service account resource kept for reference but not created
 resource "google_service_account" "user_sa" {
+  count        = 0
   account_id   = local.service_account_id
   display_name = "Service Account for user ${var.user_id}"
   project      = var.project_id
 
   lifecycle {
     prevent_destroy = true
-    ignore_changes = all  # Once created, ignore all changes
+    ignore_changes = all
   }
 }
 
-# Create raw data dataset - with lifecycle rule
+# Raw dataset resource kept for reference but not created
 resource "google_bigquery_dataset" "raw_data" {
+  count         = 0
   dataset_id    = local.raw_dataset_id
   friendly_name = "Raw data for user ${var.user_id}"
   description   = "Contains raw data from all connectors for user ${var.user_id}"
@@ -32,13 +54,13 @@ resource "google_bigquery_dataset" "raw_data" {
 
   access {
     role          = "READER"
-    user_by_email = google_service_account.user_sa.email
+    user_by_email = data.google_service_account.existing_sa[0].email
   }
 
   lifecycle {
     prevent_destroy = true
     ignore_changes = [
-      access,  # Ignore changes to access rules
+      access,
       labels,
       friendly_name,
       description
@@ -46,23 +68,24 @@ resource "google_bigquery_dataset" "raw_data" {
   }
 }
 
-# Create transformed data dataset - with lifecycle rule
+# Transformed dataset resource kept for reference but not created
 resource "google_bigquery_dataset" "transformed_data" {
+  count         = 0
   dataset_id    = local.transformed_dataset_id
   friendly_name = "Transformed data for user ${var.user_id}"
-  description   = "Contains transformed data from all connectors for user ${var.user_id}"
+  description   = "Contains transformed data for all connectors for user ${var.user_id}"
   location      = "US"
   project       = var.project_id
 
   access {
     role          = "READER"
-    user_by_email = google_service_account.user_sa.email
+    user_by_email = data.google_service_account.existing_sa[0].email
   }
 
   lifecycle {
     prevent_destroy = true
     ignore_changes = [
-      access,  # Ignore changes to access rules
+      access,
       labels,
       friendly_name,
       description
@@ -74,7 +97,7 @@ resource "google_bigquery_dataset" "transformed_data" {
 resource "google_project_iam_member" "bigquery_user" {
   project = var.project_id
   role    = "roles/bigquery.user"
-  member  = "serviceAccount:${google_service_account.user_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.existing_sa[0].email}"
 
   lifecycle {
     prevent_destroy = true
@@ -85,7 +108,7 @@ resource "google_project_iam_member" "bigquery_user" {
 resource "google_project_iam_member" "firestore_viewer" {
   project = var.project_id
   role    = "roles/datastore.viewer"
-  member  = "serviceAccount:${google_service_account.user_sa.email}"
+  member  = "serviceAccount:${data.google_service_account.existing_sa[0].email}"
 
   lifecycle {
     prevent_destroy = true
