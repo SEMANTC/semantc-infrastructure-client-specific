@@ -1,53 +1,52 @@
 # infrastructure/terraform/modules/connector_resources/main.tf
-module "user_id" {
+# CONNECTOR RESOURCES MODULE - CREATES CONNECTOR-SPECIFIC RESOURCES
+module "names" {
   source  = "../user_id_helper"
   user_id = var.user_id
 }
 
 locals {
-  bucket_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}"
-  ingestion_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
-  transformation_image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
-  ingestion_job_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-ingestion"
-  transformation_job_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-transformation"
-  scheduler_name = "${module.user_id.gcp_name}-${lower(var.connector_type)}-scheduler"
+  # CLEAN THE CONNECTOR TYPE TO BE GCP COMPLIANT
+  connector_type_clean = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
+  master_sa          = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
+  
+  # STANDARDIZED RESOURCE NAMES
+  bucket_name            = "${module.names.storage_prefix}-${local.connector_type_clean}"
+  ingestion_job_name     = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
+  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformed"
+  scheduler_name         = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 
-# CREATE BUCKET
+# CREATE CONNECTOR-SPECIFIC STORAGE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
-  force_destroy = true
+  force_destroy = false  # prevent accidental deletion
 
   uniform_bucket_level_access = true
 
   lifecycle {
-    ignore_changes = all
     prevent_destroy = true
+    ignore_changes = [
+      labels,
+      lifecycle_rule,
+      versioning,
+      website
+    ]
   }
-}
-
-# GRANT BUCKET ACCESS
-resource "google_storage_bucket_iam_member" "bucket_access" {
-  bucket = google_storage_bucket.connector_bucket.name
-  role   = "roles/storage.objectViewer"
-  member = "serviceAccount:${var.user_service_account}"
-
-  depends_on = [google_storage_bucket.connector_bucket]
 }
 
 # CREATE INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  name                = local.ingestion_job_name
-  location            = var.region
-  project             = var.project_id
-  deletion_protection = false
+  name     = local.ingestion_job_name
+  location = var.region
+  project  = var.project_id
 
   template {
     template {
       containers {
-        image = local.ingestion_image
+        image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
         
         env {
           name  = "USER_ID"
@@ -68,29 +67,36 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
           name  = "BUCKET_NAME"
           value = local.bucket_name
         }
+
+        env {
+          name  = "RAW_DATASET"
+          value = module.names.raw_dataset_id
+        }
       }
 
-      service_account = var.user_service_account
+      service_account = local.master_sa
     }
   }
 
   lifecycle {
-    ignore_changes = all
     prevent_destroy = true
+    ignore_changes = [
+      template[0].template[0].containers[0].resources,
+      labels
+    ]
   }
 }
 
 # CREATE TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  name                = local.transformation_job_name
-  location            = var.region
-  project             = var.project_id
-  deletion_protection = false
+  name     = local.transformation_job_name
+  location = var.region
+  project  = var.project_id
 
   template {
     template {
       containers {
-        image = local.transformation_image
+        image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
         
         env {
           name  = "USER_ID"
@@ -106,22 +112,35 @@ resource "google_cloud_run_v2_job" "transformation_job" {
           name  = "PROJECT_ID"
           value = var.project_id
         }
+
+        env {
+          name  = "RAW_DATASET"
+          value = module.names.raw_dataset_id
+        }
+
+        env {
+          name  = "TRANSFORMED_DATASET"
+          value = module.names.transformed_dataset_id
+        }
       }
 
-      service_account = var.user_service_account
+      service_account = local.master_sa
     }
   }
 
   lifecycle {
-    ignore_changes = all
     prevent_destroy = true
+    ignore_changes = [
+      template[0].template[0].containers[0].resources,
+      labels
+    ]
   }
 }
 
-# CREATE CLOUD SCHEDULER
+# CREATE CLOUD SCHEDULER JOB
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
   name             = local.scheduler_name
-  description      = "Triggers the ${var.connector_type} ingestion job"
+  description      = "triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"
   attempt_deadline = "320s"
@@ -133,14 +152,16 @@ resource "google_cloud_scheduler_job" "ingestion_scheduler" {
     uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${local.ingestion_job_name}:run"
 
     oauth_token {
-      service_account_email = var.user_service_account
+      service_account_email = local.master_sa
+      scope                = "https://www.googleapis.com/auth/cloud-platform"
     }
   }
 
   lifecycle {
-    ignore_changes = all
     prevent_destroy = true
+    ignore_changes = [
+      description,
+      attempt_deadline
+    ]
   }
-
-  depends_on = [google_cloud_run_v2_job.ingestion_job]
 }

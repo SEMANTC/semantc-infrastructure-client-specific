@@ -10,7 +10,7 @@ variable "region" {
 }
 
 variable "user_id" {
-  description = "firebase auth user id"
+  description = "user id from firebase auth"
   type        = string
 }
 
@@ -19,7 +19,7 @@ variable "connector_type" {
   type        = string
 }
 
-variable "user_service_account" {
-  description = "email of the user's service account"
+variable "master_service_account" {
+  description = "master service account email that will run the cloud run jobs"
   type        = string
 }

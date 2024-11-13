@@ -5,7 +5,7 @@ variable "project_id" {
 }
 
 variable "user_id" {
-  description = "firebase auth user id"
+  description = "user id from firebase auth"
   type        = string
 }
 
