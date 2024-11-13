@@ -1,4 +1,5 @@
+# infrastructure/terraform/modules/user_id_helper/variables.tf
 variable "user_id" {
-  description = "Original user ID to be standardized"
+  description = "original user id to be standardized"
   type        = string
 }

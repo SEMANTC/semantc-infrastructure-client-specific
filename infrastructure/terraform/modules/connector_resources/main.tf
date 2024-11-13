@@ -1,27 +1,28 @@
-# Connector Resources Module - Creates connector-specific resources
+# infrastructure/terraform/modules/connector_resources/main.tf
+# CONNECTOR RESOURCES MODULE - CREATES CONNECTOR-SPECIFIC RESOURCES
 module "names" {
   source  = "../user_id_helper"
   user_id = var.user_id
 }
 
 locals {
-  # Clean the connector type to be GCP compliant
+  # CLEAN THE CONNECTOR TYPE TO BE GCP COMPLIANT
   connector_type_clean = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
   master_sa          = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
   
-  # Standardized resource names
+  # STANDARDIZED RESOURCE NAMES
   bucket_name            = "${module.names.storage_prefix}-${local.connector_type_clean}"
-  ingestion_job_name     = "${module.names.job_prefix}-${local.connector_type_clean}-ing"
-  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-trn"
+  ingestion_job_name     = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
+  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformed"
   scheduler_name         = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 
-# Create connector-specific storage bucket
+# CREATE CONNECTOR-SPECIFIC STORAGE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
-  force_destroy = false  # Prevent accidental deletion
+  force_destroy = false  # prevent accidental deletion
 
   uniform_bucket_level_access = true
 
@@ -36,7 +37,7 @@ resource "google_storage_bucket" "connector_bucket" {
   }
 }
 
-# Create ingestion job
+# CREATE INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
   name     = local.ingestion_job_name
   location = var.region
@@ -86,7 +87,7 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
-# Create transformation job
+# CREATE TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
   name     = local.transformation_job_name
   location = var.region
@@ -136,10 +137,10 @@ resource "google_cloud_run_v2_job" "transformation_job" {
   }
 }
 
-# Create Cloud Scheduler job
+# CREATE CLOUD SCHEDULER JOB
 resource "google_cloud_scheduler_job" "ingestion_scheduler" {
   name             = local.scheduler_name
-  description      = "Triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
+  description      = "triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
   schedule         = "0 */4 * * *"
   time_zone        = "UTC"
   attempt_deadline = "320s"

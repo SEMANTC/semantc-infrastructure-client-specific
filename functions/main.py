@@ -10,7 +10,7 @@ from google.cloud import storage
 from datetime import datetime
 from flask import Request
 
-# Configure logging - only show INFO and above
+# configure logging - only show info and above
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -19,50 +19,50 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def setup_terraform(version="1.5.7"):
-    """Install Terraform in the function environment."""
+    """INSTALL TERRAFORM IN THE FUNCTION ENVIRONMENT"""
     logger.info("Setting up Terraform v%s", version)
     try:
         os.makedirs('/tmp/terraform', exist_ok=True)
         
-        # Download and setup Terraform
+        # download and setup terraform
         url = f"https://releases.hashicorp.com/terraform/{version}/terraform_{version}_linux_amd64.zip"
         subprocess.run(f"curl -o /tmp/terraform/terraform.zip {url}", shell=True, check=True, capture_output=True, text=True)
         subprocess.run("unzip -o /tmp/terraform/terraform.zip -d /tmp/terraform", shell=True, check=True, capture_output=True, text=True)
         subprocess.run("chmod +x /tmp/terraform/terraform", shell=True, check=True)
         
-        # Add to PATH
+        # add to PATH
         os.environ['PATH'] = f"/tmp/terraform:{os.environ['PATH']}"
         
-        # Verify installation
+        # verify installation
         subprocess.run("terraform version", shell=True, check=True, capture_output=True, text=True)
-        logger.info("Terraform setup completed successfully")
+        logger.info("terraform setup completed successfully")
         
     except Exception as e:
-        logger.error("Failed to setup Terraform: %s", str(e))
+        logger.error("failed to setup Terraform: %s", str(e))
         raise
 
 def setup_terraform_workspace(user_id):
-    """Download Terraform configs from GCS and set up workspace."""
-    logger.info("Setting up workspace for user: %s", user_id)
+    """DOWNLOAD TERRAFORM CONFIGS FROM GCS AND SET UP WORKSPACE"""
+    logger.info("setting up workspace for user: %s", user_id)
     
     temp_dir = tempfile.mkdtemp()
     
     try:
-        # Initialize Storage client and download configs
+        # initialize storage client and download configs
         storage_client = storage.Client()
         bucket = storage_client.bucket('semantc-terraform-configs')
         
         blobs = list(bucket.list_blobs())
         if not blobs:
-            raise Exception("No files found in GCS bucket!")
+            raise Exception("no files found in GCS bucket!")
         
-        # Download all terraform files
+        # download all terraform files
         for blob in blobs:
             file_path = os.path.join(temp_dir, blob.name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             blob.download_to_filename(file_path)
         
-        # Clean up any tfvars files
+        # clean up any tfvars files
         tfvars_patterns = [
             os.path.join(temp_dir, "**", "*.tfvars"),
             os.path.join(temp_dir, "**", "*.tfvars.json"),
@@ -77,19 +77,19 @@ def setup_terraform_workspace(user_id):
                 except Exception:
                     pass
         
-        logger.info("Workspace setup completed")
+        logger.info("workspace setup completed")
         return temp_dir
         
     except Exception as e:
-        logger.error("Failed to setup workspace: %s", str(e))
+        logger.error("failed to setup workspace: %s", str(e))
         raise
 
 def run_terraform_command(command, work_dir, user_id, connector_type, project_id="semantc-sandbox", region="us-central1"):
-    """Execute terraform command with proper environment and variables."""
-    logger.info("[%s/%s] Running Terraform command: %s", user_id, connector_type, command)
+    """EXECUTE TERRAFORM COMMAND WITH PROPER ENVIRONMENT AND VARIABLES"""
+    logger.info("[%s/%s] running terraform command: %s", user_id, connector_type, command)
     command_type = command.split()[1] if len(command.split()) > 1 else "execute"
     
-    # Adjust timeouts based on command type
+    # adjust timeouts based on command type
     timeouts = {
         "init": 180,  # 3 minutes
         "plan": 300,  # 5 minutes
@@ -117,7 +117,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
             env["TF_CLI_ARGS_plan"] = "-var-file=/dev/null"
 
     try:
-        logger.info("[%s/%s] Starting %s (timeout: %ds)", user_id, connector_type, command_type, timeout)
+        logger.info("[%s/%s] starting %s (timeout: %ds)", user_id, connector_type, command_type, timeout)
         start_time = datetime.utcnow()
 
         process = subprocess.Popen(
@@ -136,9 +136,9 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
             logger.info("[%s/%s] %s completed in %.1fs", user_id, connector_type, command_type, execution_time)
 
             if stdout:
-                logger.debug("Terraform stdout:\n%s", stdout)
+                logger.debug("terraform stdout:\n%s", stdout)
             if stderr:
-                logger.debug("Terraform stderr:\n%s", stderr)
+                logger.debug("terraform stderr:\n%s", stderr)
 
             if process.returncode != 0:
                 error_lines = []
@@ -153,7 +153,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
                     logger.error("[%s/%s] %s failed:\n%s", user_id, connector_type, command_type, error_message)
                     raise Exception(f"{command_type} failed: {error_message}")
                 else:
-                    error_message = f"Command failed with return code {process.returncode}"
+                    error_message = f"command failed with return code {process.returncode}"
                     logger.error("[%s/%s] %s failed: %s", user_id, connector_type, command_type, error_message)
                     raise Exception(f"{command_type} failed: {error_message}")
 
@@ -170,7 +170,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
         raise
 
 def provision_connector(request: Request):
-    """HTTP Cloud Function."""
+    """HTTP CLOUD FUNCTION"""
     start_time = datetime.utcnow()
     user_id = None
     connector_type = None
@@ -178,34 +178,34 @@ def provision_connector(request: Request):
     try:
         request_json = request.get_json(silent=True)
         if not request_json or 'userId' not in request_json:
-            return ("Missing userId in request", 400)
+            return ("missing userId in request", 400)
         
         user_id = request_json['userId']
         connector_type = request_json.get('connectorType', 'xero')
         project_id = os.environ.get('GOOGLE_PROJECT', 'semantc-sandbox')
         
-        logger.info("[%s/%s] Starting provisioning", user_id, connector_type)
+        logger.info("[%s/%s] starting provisioning", user_id, connector_type)
         
-        # Initialize Firestore
+        # initialize firestore
         db = firestore.Client()
         connector_ref = db.document(f'users/{user_id}/integrations/connectors')
         doc = connector_ref.get()
         if not doc.exists:
-            return (f"No connector configuration found for user {user_id}", 404)
+            return (f"no connector configuration found for user {user_id}", 404)
         
-        # Update status
+        # update status
         connector_ref.set({
             'provisioningStatus': 'in_progress',
             'lastProvisioningAttempt': start_time
         }, merge=True)
         
         try:
-            # Setup and run Terraform
+            # setup and run terraform
             setup_terraform()
             work_dir = setup_terraform_workspace(user_id)
             
             try:
-                # Run Terraform commands with proper error handling
+                # run terraform commands with proper error handling
                 steps = [
                     ("init", "terraform init -no-color"),
                     ("plan", "terraform plan -no-color -out=tfplan"),
@@ -213,17 +213,17 @@ def provision_connector(request: Request):
                 ]
                 
                 for step_name, cmd in steps:
-                    logger.info("[%s/%s] Starting step: %s", user_id, connector_type, step_name)
+                    logger.info("[%s/%s] starting step: %s", user_id, connector_type, step_name)
                     try:
                         run_terraform_command(cmd, work_dir, user_id, connector_type)
                     except Exception as e:
                         total_time = (datetime.utcnow() - start_time).total_seconds()
-                        logger.error("[%s/%s] Failed after %.1fs during %s: %s", 
+                        logger.error("[%s/%s] failed after %.1fs during %s: %s", 
                                    user_id, connector_type, total_time, step_name, str(e))
-                        raise Exception(f"Failed during {step_name}: {str(e)}")
+                        raise Exception(f"failed during {step_name}: {str(e)}")
                 
                 total_time = (datetime.utcnow() - start_time).total_seconds()
-                logger.info("[%s/%s] Provisioning completed successfully in %.1fs", 
+                logger.info("[%s/%s] provisioning completed successfully in %.1fs", 
                           user_id, connector_type, total_time)
                 
                 connector_ref.set({
@@ -236,7 +236,7 @@ def provision_connector(request: Request):
                     }
                 }, merge=True)
                 
-                return ('Resources provisioned successfully', 200)
+                return ('resources provisioned successfully', 200)
                 
             finally:
                 if 'work_dir' in locals():
@@ -246,10 +246,10 @@ def provision_connector(request: Request):
         except Exception as e:
             error_message = str(e)
             total_time = (datetime.utcnow() - start_time).total_seconds()
-            logger.error("[%s/%s] Provisioning failed after %.1fs: %s", 
+            logger.error("[%s/%s] provisioning failed after %.1fs: %s", 
                         user_id, connector_type, total_time, error_message)
             
-            # Update Firestore with error
+            # update firestore with error
             connector_ref.set({
                 'lastProvisioned': datetime.utcnow(),
                 'provisioningStatus': 'failed',
@@ -257,10 +257,10 @@ def provision_connector(request: Request):
                 'provisioningDuration': total_time
             }, merge=True)
             
-            return (f"Failed to provision resources: {error_message}", 500)
+            return (f"failed to provision resources: {error_message}", 500)
             
     except Exception as e:
         total_time = (datetime.utcnow() - start_time).total_seconds()
-        logger.error("[%s/%s] Unexpected error after %.1fs: %s", 
+        logger.error("[%s/%s] unexpected error after %.1fs: %s", 
                     user_id or 'unknown', connector_type or 'unknown', total_time, str(e))
-        return (f"Unexpected error: {str(e)}", 500)
+        return (f"unexpected error: {str(e)}", 500)

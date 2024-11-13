@@ -1,21 +1,22 @@
+# infrastructure/terraform/modules/user_id_helper/main.tf
 locals {
-  # Create standardized user ID that's GCP compliant:
-  # 1. Take first 8 chars of user ID (leaving room for prefixes)
-  # 2. Convert to lowercase
-  # 3. Remove any non-alphanumeric chars
+  # CREATE STANDARDIZED USER ID THAT'S GCP COMPLIANT:
+  # 1. TAKE FIRST 8 CHARS OF USER ID (LEAVING ROOM FOR PREFIXES)
+  # 2. CONVERT TO LOWERCASE
+  # 3. REMOVE ANY NON-ALPHANUMERIC CHARS
   standard_id = lower(replace(substr(var.user_id, 0, 8), "/[^a-zA-Z0-9]/", ""))
 
-  # Resource naming patterns compliant with GCP requirements:
+  # RESOURCE NAMING PATTERNS COMPLIANT WITH GCP REQUIREMENTS:
   
   # Service Account: 6-30 chars, lowercase letters/numbers/hyphens, start with letter
   service_account_id = "sa-${local.standard_id}"
   
-  # BigQuery: Letters/numbers/underscores, start with letter/underscore
-  raw_dataset_id = "user_${local.standard_id}_raw"
-  transformed_dataset_id = "user_${local.standard_id}_transformed"
+  # BigQuery: letters/numbers/underscores, start with letter/underscore
+  raw_dataset_id = "bq_${local.standard_id}_raw"
+  transformed_dataset_id = "bq_${local.standard_id}_transformed"
   
   # Storage: 3-63 chars, lowercase letters/numbers/dots/hyphens, start/end with letter/number
-  storage_prefix = "user-${local.standard_id}"
+  storage_prefix = "gcs-${local.standard_id}"
   
   # Cloud Run: Letters/numbers/hyphens, start with letter
   job_prefix = "job-${local.standard_id}"

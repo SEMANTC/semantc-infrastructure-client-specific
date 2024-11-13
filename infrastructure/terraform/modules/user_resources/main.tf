@@ -1,13 +1,14 @@
-# User Resources Module - Creates base infrastructure for each user
+# infrastructure/terraform/modules/user_resources/main.tf
+# USER RESOURCES MODULE - CREATES BASE INFRASTRUCTURE FOR EACH USER
 module "names" {
   source  = "../user_id_helper"
   user_id = var.user_id
 }
 
-# Create service account
+# CREATE SERVICE ACCOUNT
 resource "google_service_account" "user_sa" {
   account_id   = module.names.service_account_id
-  display_name = "Service Account for user ${var.user_id}"
+  display_name = "service Account for user ${var.user_id}"
   project      = var.project_id
 
   lifecycle {
@@ -15,11 +16,11 @@ resource "google_service_account" "user_sa" {
   }
 }
 
-# Create raw data dataset
+# CREATE RAW DATA DATASET
 resource "google_bigquery_dataset" "raw_data" {
   dataset_id    = module.names.raw_dataset_id
-  friendly_name = "Raw data for user ${var.user_id}"
-  description   = "Contains raw data from all connectors for user ${var.user_id}"
+  friendly_name = "raw data for user ${var.user_id}"
+  description   = "contains raw data from all connectors for user ${var.user_id}"
   location      = "US"
   project       = var.project_id
 
@@ -39,11 +40,11 @@ resource "google_bigquery_dataset" "raw_data" {
   }
 }
 
-# Create transformed data dataset
+# CREATE TRANSFORMED DATA DATASET
 resource "google_bigquery_dataset" "transformed_data" {
   dataset_id    = module.names.transformed_dataset_id
-  friendly_name = "Transformed data for user ${var.user_id}"
-  description   = "Contains transformed data for user ${var.user_id}"
+  friendly_name = "transformed data for user ${var.user_id}"
+  description   = "contains transformed data for user ${var.user_id}"
   location      = "US"
   project       = var.project_id
 
@@ -63,7 +64,7 @@ resource "google_bigquery_dataset" "transformed_data" {
   }
 }
 
-# Grant basic roles to the service account
+# GRANT BASIC ROLES TO THE SERVICE ACCOUNT
 resource "google_project_iam_member" "bigquery_user" {
   project = var.project_id
   role    = "roles/bigquery.user"
