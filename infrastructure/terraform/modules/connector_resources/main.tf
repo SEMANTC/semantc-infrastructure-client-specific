@@ -8,7 +8,7 @@ module "names" {
 locals {
   # CLEAN THE CONNECTOR TYPE TO BE GCP COMPLIANT
   connector_type_clean  = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
-  master_sa             = var.master_service_account
+  master_sa            = var.master_service_account
   
   # STANDARDIZED RESOURCE NAMES
   bucket_name             = "${var.project_id}-${module.names.storage_prefix}-${local.connector_type_clean}"
@@ -17,8 +17,14 @@ locals {
   scheduler_name          = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 
+# CHECK IF BUCKET EXISTS
+data "google_storage_bucket" "existing_bucket" {
+  name = local.bucket_name
+}
+
 # CREATE CONNECTOR-SPECIFIC STORAGE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
+  count         = data.google_storage_bucket.existing_bucket == null ? 1 : 0
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
@@ -37,8 +43,16 @@ resource "google_storage_bucket" "connector_bucket" {
   }
 }
 
+# CHECK IF INGESTION JOB EXISTS
+data "google_cloud_run_v2_job" "existing_ingestion" {
+  name     = local.ingestion_job_name
+  location = var.region
+  project  = var.project_id
+}
+
 # CREATE INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
+  count    = data.google_cloud_run_v2_job.existing_ingestion == null ? 1 : 0
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
@@ -57,16 +71,6 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
           name  = "PROJECT_ID"
           value = var.project_id
         }
-
-        env {
-          name  = "BUCKET_NAME"
-          value = local.bucket_name
-        }
-
-        env {
-          name  = "RAW_DATASET"
-          value = module.names.raw_dataset_id
-        }
       }
 
       service_account = local.master_sa
@@ -83,8 +87,16 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
   }
 }
 
+# CHECK IF TRANSFORMATION JOB EXISTS
+data "google_cloud_run_v2_job" "existing_transformation" {
+  name     = local.transformation_job_name
+  location = var.region
+  project  = var.project_id
+}
+
 # CREATE TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
+  count    = data.google_cloud_run_v2_job.existing_transformation == null ? 1 : 0
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
@@ -97,11 +109,6 @@ resource "google_cloud_run_v2_job" "transformation_job" {
         env {
           name  = "USER_ID"
           value = var.user_id
-        }
-        
-        env {
-          name  = "CONNECTOR_TYPE"
-          value = var.connector_type
         }
 
         env {
@@ -130,35 +137,6 @@ resource "google_cloud_run_v2_job" "transformation_job" {
     ignore_changes = [
       template[0].template[0].containers[0].resources,
       labels
-    ]
-  }
-}
-
-# CREATE CLOUD SCHEDULER JOB
-resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = local.scheduler_name
-  description      = "triggers the ${var.connector_type} ingestion job for user ${var.user_id}"
-  schedule         = "0 */4 * * *"
-  time_zone        = "UTC"
-  attempt_deadline = "320s"
-  region          = var.region
-  project         = var.project_id
-
-  http_target {
-    http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${local.ingestion_job_name}:run"
-
-    oauth_token {
-      service_account_email = local.master_sa
-      scope                = "https://www.googleapis.com/auth/cloud-platform"
-    }
-  }
-
-  lifecycle {
-    prevent_destroy = true
-    ignore_changes = [
-      description,
-      attempt_deadline
     ]
   }
 }
