@@ -13,7 +13,7 @@ locals {
   # STANDARDIZED RESOURCE NAMES
   bucket_name             = "${module.names.storage_prefix}-${local.connector_type_clean}"
   ingestion_job_name      = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
-  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformed"
+  transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformation"
   scheduler_name          = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 

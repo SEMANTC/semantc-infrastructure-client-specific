@@ -160,7 +160,7 @@ gcloud functions deploy provision-connector \
     --region=us-central1 \
     --source=./functions \
     --entry-point=provision_connector \
-    --service-account=terraform-sa@${PROJECT_ID}.iam.gserviceaccount.com \
+    --service-account=terraform-sa@semantc-sandbox.iam.gserviceaccount.com \
     --trigger-http \
     --allow-unauthenticated \
     --memory=2048MB \
