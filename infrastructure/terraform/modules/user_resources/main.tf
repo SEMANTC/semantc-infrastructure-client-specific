@@ -7,21 +7,12 @@ module "names" {
 
 locals {
   # TRY TO GET THE SERVICE ACCOUNT, RETURN NULL IF NOT FOUND
-  existing_sa = try(
-    data.google_service_account.existing_sa[0].email,
-    null
-  )
+  existing_sa = length(data.google_service_account.existing_sa) > 0 ? data.google_service_account.existing_sa[0].email : null
 
   # TRY TO GET EXISTING DATASETS, RETURN NULL IF NOT FOUND
-  existing_raw_dataset = try(
-    data.google_bigquery_dataset.existing_raw[0].dataset_id,
-    null
-  )
+  existing_raw_dataset = length(data.google_bigquery_dataset.existing_raw) > 0 ? data.google_bigquery_dataset.existing_raw[0].dataset_id : null
 
-  existing_transformed_dataset = try(
-    data.google_bigquery_dataset.existing_transformed[0].dataset_id,
-    null
-  )
+  existing_transformed_dataset = length(data.google_bigquery_dataset.existing_transformed) > 0 ? data.google_bigquery_dataset.existing_transformed[0].dataset_id : null
 
   # DETERMINE IF RESOURCES SHOULD BE CREATED
   create_sa = local.existing_sa == null
@@ -38,7 +29,13 @@ locals {
 
 # CHECK IF SERVICE ACCOUNT EXISTS
 data "google_service_account" "existing_sa" {
-  count       = 1
+  count = can(data.google_service_account.existing_sa_check[0]) ? 1 : 0
+  account_id = module.names.service_account_id
+  project    = var.project_id
+}
+
+data "google_service_account" "existing_sa_check" {
+  count = 0
   account_id = module.names.service_account_id
   project    = var.project_id
 }
@@ -57,7 +54,13 @@ resource "google_service_account" "user_sa" {
 
 # CHECK IF RAW DATASET EXISTS
 data "google_bigquery_dataset" "existing_raw" {
-  count      = 1
+  count = can(data.google_bigquery_dataset.existing_raw_check[0]) ? 1 : 0
+  dataset_id = module.names.raw_dataset_id
+  project    = var.project_id
+}
+
+data "google_bigquery_dataset" "existing_raw_check" {
+  count = 0
   dataset_id = module.names.raw_dataset_id
   project    = var.project_id
 }
@@ -89,7 +92,13 @@ resource "google_bigquery_dataset" "raw_data" {
 
 # CHECK IF TRANSFORMED DATASET EXISTS
 data "google_bigquery_dataset" "existing_transformed" {
-  count      = 1
+  count = can(data.google_bigquery_dataset.existing_transformed_check[0]) ? 1 : 0
+  dataset_id = module.names.transformed_dataset_id
+  project    = var.project_id
+}
+
+data "google_bigquery_dataset" "existing_transformed_check" {
+  count = 0
   dataset_id = module.names.transformed_dataset_id
   project    = var.project_id
 }

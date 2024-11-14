@@ -15,16 +15,27 @@ locals {
   ingestion_job_name      = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
   transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformation"
   scheduler_name          = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
+
+  # DETERMINE IF RESOURCES EXIST
+  bucket_exists = length(data.google_storage_bucket.existing_bucket) > 0
+  ingestion_job_exists = length(data.google_cloud_run_v2_job.existing_ingestion) > 0
+  transformation_job_exists = length(data.google_cloud_run_v2_job.existing_transformation) > 0
 }
 
 # CHECK IF BUCKET EXISTS
 data "google_storage_bucket" "existing_bucket" {
+  count = can(data.google_storage_bucket.existing_bucket_check[0]) ? 1 : 0
+  name = local.bucket_name
+}
+
+data "google_storage_bucket" "existing_bucket_check" {
+  count = 0
   name = local.bucket_name
 }
 
 # CREATE CONNECTOR-SPECIFIC STORAGE BUCKET
 resource "google_storage_bucket" "connector_bucket" {
-  count         = data.google_storage_bucket.existing_bucket == null ? 1 : 0
+  count         = local.bucket_exists ? 0 : 1
   name          = local.bucket_name
   location      = var.region
   project       = var.project_id
@@ -45,6 +56,14 @@ resource "google_storage_bucket" "connector_bucket" {
 
 # CHECK IF INGESTION JOB EXISTS
 data "google_cloud_run_v2_job" "existing_ingestion" {
+  count    = can(data.google_cloud_run_v2_job.existing_ingestion_check[0]) ? 1 : 0
+  name     = local.ingestion_job_name
+  location = var.region
+  project  = var.project_id
+}
+
+data "google_cloud_run_v2_job" "existing_ingestion_check" {
+  count    = 0
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
@@ -52,7 +71,7 @@ data "google_cloud_run_v2_job" "existing_ingestion" {
 
 # CREATE INGESTION JOB
 resource "google_cloud_run_v2_job" "ingestion_job" {
-  count    = data.google_cloud_run_v2_job.existing_ingestion == null ? 1 : 0
+  count    = local.ingestion_job_exists ? 0 : 1
   name     = local.ingestion_job_name
   location = var.region
   project  = var.project_id
@@ -89,6 +108,14 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
 
 # CHECK IF TRANSFORMATION JOB EXISTS
 data "google_cloud_run_v2_job" "existing_transformation" {
+  count    = can(data.google_cloud_run_v2_job.existing_transformation_check[0]) ? 1 : 0
+  name     = local.transformation_job_name
+  location = var.region
+  project  = var.project_id
+}
+
+data "google_cloud_run_v2_job" "existing_transformation_check" {
+  count    = 0
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
@@ -96,7 +123,7 @@ data "google_cloud_run_v2_job" "existing_transformation" {
 
 # CREATE TRANSFORMATION JOB
 resource "google_cloud_run_v2_job" "transformation_job" {
-  count    = data.google_cloud_run_v2_job.existing_transformation == null ? 1 : 0
+  count    = local.transformation_job_exists ? 0 : 1
   name     = local.transformation_job_name
   location = var.region
   project  = var.project_id
