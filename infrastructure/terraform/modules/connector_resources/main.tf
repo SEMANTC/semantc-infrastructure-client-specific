@@ -1,4 +1,3 @@
-# infrastructure/terraform/modules/connector_resources/main.tf
 # CONNECTOR RESOURCES MODULE - CREATES CONNECTOR-SPECIFIC RESOURCES
 module "names" {
   source  = "../user_id_helper"
@@ -11,7 +10,7 @@ locals {
   master_sa            = var.master_service_account
   
   # STANDARDIZED RESOURCE NAMES
-  bucket_name             = "${var.project_id}-${module.names.storage_prefix}-${local.connector_type_clean}"
+  bucket_name             = "${module.names.storage_prefix}-${local.connector_type_clean}"
   ingestion_job_name      = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
   transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformation"
   scheduler_name          = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
@@ -167,3 +166,16 @@ resource "google_cloud_run_v2_job" "transformation_job" {
     ]
   }
 }
+
+# ADD IAM ROLES FOR THE SERVICE ACCOUNT
+resource "google_project_iam_member" "ingestion_firestore" {
+  project = var.project_id
+  role    = "roles/datastore.user"
+  member  = "serviceAccount:${local.master_sa}"
+}
+
+# resource "google_project_iam_member" "ingestion_token_encryptor" {
+#   project = var.project_id
+#   role    = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+#   member  = "serviceAccount:${local.master_sa}"
+# }
