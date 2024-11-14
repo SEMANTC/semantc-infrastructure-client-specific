@@ -7,14 +7,14 @@ module "names" {
 
 locals {
   # CLEAN THE CONNECTOR TYPE TO BE GCP COMPLIANT
-  connector_type_clean = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
-  master_sa          = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
+  connector_type_clean  = lower(replace(var.connector_type, "/[^a-zA-Z0-9]/", ""))
+  master_sa             = "master-sa@semantc-sandbox.iam.gserviceaccount.com"
   
   # STANDARDIZED RESOURCE NAMES
-  bucket_name            = "${module.names.storage_prefix}-${local.connector_type_clean}"
-  ingestion_job_name     = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
+  bucket_name             = "${module.names.storage_prefix}-${local.connector_type_clean}"
+  ingestion_job_name      = "${module.names.job_prefix}-${local.connector_type_clean}-ingestion"
   transformation_job_name = "${module.names.job_prefix}-${local.connector_type_clean}-transformed"
-  scheduler_name         = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
+  scheduler_name          = "${module.names.scheduler_prefix}-${local.connector_type_clean}"
 }
 
 # CREATE CONNECTOR-SPECIFIC STORAGE BUCKET
@@ -53,25 +53,25 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
           value = var.user_id
         }
         
-        env {
-          name  = "CONNECTOR_TYPE"
-          value = var.connector_type
-        }
+        # env {
+        #   name  = "CONNECTOR_TYPE"
+        #   value = var.connector_type
+        # }
 
         env {
           name  = "PROJECT_ID"
           value = var.project_id
         }
 
-        env {
-          name  = "BUCKET_NAME"
-          value = local.bucket_name
-        }
+        # env {
+        #   name  = "BUCKET_NAME"
+        #   value = local.bucket_name
+        # }
 
-        env {
-          name  = "RAW_DATASET"
-          value = module.names.raw_dataset_id
-        }
+        # env {
+        #   name  = "RAW_DATASET"
+        #   value = module.names.raw_dataset_id
+        # }
       }
 
       service_account = local.master_sa
