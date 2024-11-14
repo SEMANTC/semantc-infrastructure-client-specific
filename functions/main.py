@@ -256,7 +256,7 @@ def create_or_update_scheduler(user_id, connector_type, project_id="semantc-sand
 
 def provision_connector(request: Request):
     """HTTP CLOUD FUNCTION ENTRY POINT"""
-    logger.info(" provision connector function started")
+    logger.info("provision connector function started")
     logger.info("request method: %s", request.method)
     logger.info("request headers: %s", dict(request.headers))
     
@@ -325,10 +325,10 @@ def provision_connector(request: Request):
                 
                 total_time = (datetime.utcnow() - start_time).total_seconds()
                 
-                # update status to in_progress before scheduler creation
+                # Set success status after Terraform
                 connector_ref.set({
                     'lastProvisioned': datetime.utcnow(),
-                    'provisioningStatus': 'in_progress',
+                    'provisioningStatus': 'completed',
                     'provisioningDuration': total_time,
                     connector_type: {
                         'resourcesProvisioned': True,
@@ -336,17 +336,14 @@ def provision_connector(request: Request):
                     }
                 }, merge=True)
                 
-                # create or update the scheduler after terraform succeeds
-                scheduler_success = create_or_update_scheduler(user_id, connector_type)
+                # try to create scheduler - but don't let it affect the success status
+                try:
+                    create_or_update_scheduler(user_id, connector_type)
+                except Exception as e:
+                    logger.warning("[%s/%s] scheduler creation failed but continuing: %s", 
+                                 user_id, connector_type, str(e))
                 
-                # final status update
-                final_status = 'completed' if scheduler_success else 'partial'
-                connector_ref.set({
-                    'provisioningStatus': final_status,
-                    'schedulerProvisioned': scheduler_success
-                }, merge=True)
-                
-                logger.info("[%s/%s] firestore updated with final status: %s", user_id, connector_type, final_status)
+                logger.info("[%s/%s] firestore updated with success status", user_id, connector_type)
                 return ('resources provisioned successfully', 200)
                 
             finally:

@@ -1,19 +1,51 @@
 # infrastructure/terraform/modules/user_resources/main.tf
-# user resources module - creates base infrastructure for each user
+# USER RESOURCES MODULE - CREATES BASE INFRASTRUCTURE FOR EACH USER
 module "names" {
   source  = "../user_id_helper"
   user_id = var.user_id
 }
 
-# check if service account already exists
+locals {
+  # TRY TO GET THE SERVICE ACCOUNT, RETURN NULL IF NOT FOUND
+  existing_sa = try(
+    data.google_service_account.existing_sa[0].email,
+    null
+  )
+
+  # TRY TO GET EXISTING DATASETS, RETURN NULL IF NOT FOUND
+  existing_raw_dataset = try(
+    data.google_bigquery_dataset.existing_raw[0].dataset_id,
+    null
+  )
+
+  existing_transformed_dataset = try(
+    data.google_bigquery_dataset.existing_transformed[0].dataset_id,
+    null
+  )
+
+  # DETERMINE IF RESOURCES SHOULD BE CREATED
+  create_sa = local.existing_sa == null
+  create_raw_dataset = local.existing_raw_dataset == null
+  create_transformed_dataset = local.existing_transformed_dataset == null
+
+  # FINAL SERVICE ACCOUNT EMAIL TO USE
+  service_account_email = local.create_sa ? (
+    google_service_account.user_sa[0].email
+  ) : (
+    data.google_service_account.existing_sa[0].email
+  )
+}
+
+# CHECK IF SERVICE ACCOUNT EXISTS
 data "google_service_account" "existing_sa" {
+  count       = 1
   account_id = module.names.service_account_id
   project    = var.project_id
 }
 
-# create service account only if it doesn't exist
+# CREATE SERVICE ACCOUNT ONLY IF IT DOESN'T EXIST
 resource "google_service_account" "user_sa" {
-  count        = data.google_service_account.existing_sa == null ? 1 : 0
+  count        = local.create_sa ? 1 : 0
   account_id   = module.names.service_account_id
   display_name = "service account for user ${var.user_id}"
   project      = var.project_id
@@ -23,22 +55,16 @@ resource "google_service_account" "user_sa" {
   }
 }
 
-locals {
-  service_account_email = try(
-    google_service_account.user_sa[0].email,
-    data.google_service_account.existing_sa.email
-  )
-}
-
-# check if raw dataset exists
+# CHECK IF RAW DATASET EXISTS
 data "google_bigquery_dataset" "existing_raw" {
+  count      = 1
   dataset_id = module.names.raw_dataset_id
   project    = var.project_id
 }
 
-# create raw data dataset only if it doesn't exist
+# CREATE RAW DATA DATASET ONLY IF IT DOESN'T EXIST
 resource "google_bigquery_dataset" "raw_data" {
-  count         = data.google_bigquery_dataset.existing_raw == null ? 1 : 0
+  count         = local.create_raw_dataset ? 1 : 0
   dataset_id    = module.names.raw_dataset_id
   friendly_name = "raw data for user ${var.user_id}"
   description   = "contains raw data from all connectors for user ${var.user_id}"
@@ -61,15 +87,16 @@ resource "google_bigquery_dataset" "raw_data" {
   }
 }
 
-# check if transformed dataset exists
+# CHECK IF TRANSFORMED DATASET EXISTS
 data "google_bigquery_dataset" "existing_transformed" {
+  count      = 1
   dataset_id = module.names.transformed_dataset_id
   project    = var.project_id
 }
 
-# create transformed data dataset only if it doesn't exist
+# CREATE TRANSFORMED DATA DATASET ONLY IF IT DOESN'T EXIST
 resource "google_bigquery_dataset" "transformed_data" {
-  count         = data.google_bigquery_dataset.existing_transformed == null ? 1 : 0
+  count         = local.create_transformed_dataset ? 1 : 0
   dataset_id    = module.names.transformed_dataset_id
   friendly_name = "transformed data for user ${var.user_id}"
   description   = "contains transformed data for user ${var.user_id}"
@@ -92,7 +119,7 @@ resource "google_bigquery_dataset" "transformed_data" {
   }
 }
 
-# grant basic roles to the service account
+# GRANT BASIC ROLES TO THE SERVICE ACCOUNT
 resource "google_project_iam_member" "bigquery_user" {
   project = var.project_id
   role    = "roles/bigquery.user"
