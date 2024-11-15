@@ -180,44 +180,6 @@ resource "google_bigquery_dataset_iam_member" "admin_transformed_access" {
   member     = "user:fernando@abcdataz.com"
 }
 
-# CREATE SCHEDULER WITH IMMEDIATE FIRST RUN
-resource "google_cloud_scheduler_job" "ingestion_scheduler" {
-  name             = local.scheduler_name
-  description      = "Scheduler for ${local.connector_type_clean} ingestion job"
-  schedule         = "0 */4 * * *"
-  time_zone        = "UTC"
-  attempt_deadline = "320s"
-  region          = var.region
-  project         = var.project_id
-
-  http_target {
-    http_method = "POST"
-    uri         = "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${local.ingestion_job_name}:run"
-    
-    oauth_token {
-      service_account_email = local.master_sa
-      scope                = "https://www.googleapis.com/auth/cloud-platform"
-    }
-  }
-}
-
-# TRIGGER IMMEDIATE FIRST RUN
-resource "null_resource" "trigger_first_run" {
-  depends_on = [
-    google_cloud_run_v2_job.ingestion_job,
-    google_cloud_scheduler_job.ingestion_scheduler
-  ]
-
-  provisioner "local-exec" {
-    command = <<EOT
-      curl -X POST \
-      -H "Authorization: Bearer $(gcloud auth print-access-token)" \
-      -H "Content-Type: application/json" \
-      "https://${var.region}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${var.project_id}/jobs/${local.ingestion_job_name}:run"
-    EOT
-  }
-}
-
 # resource "google_project_iam_member" "ingestion_token_encryptor" {
 #   project = var.project_id
 #   role    = "roles/cloudkms.cryptoKeyEncrypterDecrypter"

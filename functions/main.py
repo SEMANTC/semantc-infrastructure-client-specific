@@ -200,7 +200,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
         raise
 
 def create_or_update_scheduler(user_id, connector_type, project_id="semantc-sandbox", region="us-central1"):
-    """CREATE OR UPDATE CLOUD SCHEDULER JOB USING REST API"""
+    """CREATE OR UPDATE CLOUD SCHEDULER JOB USING REST API AND TRIGGER IMMEDIATE RUN"""
     logger.info("[%s/%s] starting scheduler management", user_id, connector_type)
 
     try:
@@ -219,13 +219,6 @@ def create_or_update_scheduler(user_id, connector_type, project_id="semantc-sand
         check_url = f"https://cloudscheduler.googleapis.com/v1/projects/{project_id}/locations/{region}/jobs/{job_name}"
         response = authed_session.get(check_url)
         
-        if response.status_code == 200:
-            logger.info("[%s/%s] scheduler already exists", user_id, connector_type)
-            return True
-        
-        # create scheduler if it doesn't exist
-        create_url = f"https://cloudscheduler.googleapis.com/v1/projects/{project_id}/locations/{region}/jobs"
-        
         scheduler_job = {
             "name": f"projects/{project_id}/locations/{region}/jobs/{job_name}",
             "schedule": "0 */4 * * *",
@@ -240,16 +233,38 @@ def create_or_update_scheduler(user_id, connector_type, project_id="semantc-sand
                 }
             }
         }
-        
-        response = authed_session.post(create_url, json=scheduler_job)
-        
-        if response.status_code in [200, 201]:
-            logger.info("[%s/%s] scheduler created successfully", user_id, connector_type)
+
+        if response.status_code == 200:
+            # update existing scheduler
+            logger.info("[%s/%s] updating existing scheduler", user_id, connector_type)
+            update_url = f"https://cloudscheduler.googleapis.com/v1/projects/{project_id}/locations/{region}/jobs/{job_name}"
+            response = authed_session.patch(update_url, json=scheduler_job)
+
+            if response.status_code not in [200, 201]:
+                logger.error("[%s/%s] scheduler update failed: %s", user_id, connector_type, response.text)
+                return False
+        else:
+            # create new scheduler
+            logger.info("[%s/%s] creating new scheduler", user_id, connector_type)
+            create_url = f"https://cloudscheduler.googleapis.com/v1/projects/{project_id}/locations/{region}/jobs"
+            response = authed_session.post(create_url, json=scheduler_job)
+
+            if response.status_code not in [200, 201]:
+                logger.error("[%s/%s] scheduler creation failed: %s", user_id, connector_type, response.text)
+                return False
+
+        # trigger immediate run
+        logger.info("[%s/%s] triggering immediate scheduler run", user_id, connector_type)
+        run_url = f"https://cloudscheduler.googleapis.com/v1/projects/{project_id}/locations/{region}/jobs/{job_name}:run"
+        run_response = authed_session.post(run_url)
+
+        if run_response.status_code in [200, 201]:
+            logger.info("[%s/%s] immediate scheduler run triggered successfully", user_id, connector_type)
             return True
         else:
-            logger.warning("[%s/%s] scheduler creation failed: %s", user_id, connector_type, response.text)
+            logger.warning("[%s/%s] immediate scheduler run failed: %s", user_id, connector_type, run_response.text)
             return False
-            
+
     except Exception as e:
         logger.error("[%s/%s] failed to manage scheduler: %s", user_id, connector_type, str(e))
         return False
