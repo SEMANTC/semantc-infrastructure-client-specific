@@ -23,9 +23,3 @@ variable "master_service_account" {
   description = "master service account email that will run the cloud run jobs"
   type        = string
 }
-
-variable "tenant_id" {
-  description = "tenant id for the connector (e.g., xero tenant id)"
-  type        = string
-  default     = ""
-}
