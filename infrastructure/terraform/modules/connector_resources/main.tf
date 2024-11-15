@@ -1,3 +1,4 @@
+# infrastructure/terraform/modules/connector_resources/main.tf
 # CONNECTOR RESOURCES MODULE - CREATES CONNECTOR-SPECIFIC RESOURCES
 module "names" {
   source  = "../user_id_helper"
@@ -81,13 +82,13 @@ resource "google_cloud_run_v2_job" "ingestion_job" {
         image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-ingestion:latest"
         
         env {
-          name  = "USER_ID"
-          value = var.user_id
-        }
-        
-        env {
           name  = "PROJECT_ID"
           value = var.project_id
+        }
+
+        env {
+          name  = "USER_ID"
+          value = var.user_id
         }
       }
 
@@ -133,23 +134,13 @@ resource "google_cloud_run_v2_job" "transformation_job" {
         image = "gcr.io/${var.project_id}/${lower(var.connector_type)}-transformation:latest"
         
         env {
-          name  = "USER_ID"
-          value = var.user_id
-        }
-
-        env {
           name  = "PROJECT_ID"
           value = var.project_id
         }
 
         env {
-          name  = "RAW_DATASET"
-          value = module.names.raw_dataset_id
-        }
-
-        env {
-          name  = "TRANSFORMED_DATASET"
-          value = module.names.transformed_dataset_id
+          name  = "TENANT_ID"
+          value = ""
         }
       }
 

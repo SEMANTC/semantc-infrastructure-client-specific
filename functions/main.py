@@ -142,6 +142,7 @@ def run_terraform_command(command, work_dir, user_id, connector_type, project_id
         "TF_VAR_region": region,
         "TF_VAR_connector_type": connector_type,
         "TF_VAR_master_service_account": "master-sa@semantc-sandbox.iam.gserviceaccount.com",
+        "TF_VAR_tenant_id": "",
         "TF_LOG": "DEBUG",
         "TF_LOG_PATH": f"/tmp/terraform-{command.split()[1]}.log",
         "TF_IN_AUTOMATION": "true",
